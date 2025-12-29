@@ -1,4 +1,5 @@
 import puppeteer from 'puppeteer';
+import fs from 'fs';
 
 (async () => {
     const title = process.argv[2];
@@ -16,13 +17,15 @@ import puppeteer from 'puppeteer';
 
     let results = [];
     let apiResponse = null;
+    let browser = null;
+    let page = null;
 
     try {
-        const browser = await puppeteer.launch({
+        browser = await puppeteer.launch({
             headless: 'new',
             args: ['--no-sandbox', '--disable-setuid-sandbox']
         });
-        const page = await browser.newPage();
+        page = await browser.newPage();
 
         // Set User-Agent to look like a real browser
         await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
@@ -143,10 +146,13 @@ import puppeteer from 'puppeteer';
         console.log(JSON.stringify({ error: error.message }));
         process.exit(1);
     } finally {
-        if (results.length === 0 && !apiResponse) {
-             const fs = require('fs');
-             const html = await page.content();
-             fs.writeFileSync('cex_dump.html', html);
+        if (results.length === 0 && !apiResponse && page) {
+             try {
+                 const html = await page.content();
+                 fs.writeFileSync('cex_dump.html', html);
+             } catch (e) {
+                 // ignore write errors
+             }
         }
     }
 })();
