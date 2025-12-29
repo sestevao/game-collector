@@ -6,6 +6,7 @@ use App\Http\Controllers\GameLookupController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\LinkedAccountController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\RankingController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -29,6 +30,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/games/{game}/refresh-price', [GameController::class, 'refreshPrice'])->name('games.refresh-price');
     Route::post('/games/{game}/refresh-metadata', [GameController::class, 'refreshMetadata'])->name('games.refresh-metadata');
     Route::get('/games/statistics', [GameController::class, 'statistics'])->name('games.statistics');
+
+    // Rankings
+    Route::get('/games/best-of-year', [RankingController::class, 'bestOfYear'])->name('games.best-of-year');
+    Route::get('/games/popular-2024', [RankingController::class, 'popular2024'])->name('games.popular-2024');
+    Route::get('/games/top-250', [RankingController::class, 'top250'])->name('games.top-250');
+    
+    // Discovery
+    Route::get('/games/browse', [RankingController::class, 'browse'])->name('games.browse');
+    Route::get('/games/platforms', [RankingController::class, 'platforms'])->name('games.platforms');
+    Route::get('/games/stores', [RankingController::class, 'stores'])->name('games.stores');
+    Route::get('/games/collections', [RankingController::class, 'collections'])->name('games.collections');
+
     Route::resource('games', GameController::class);
     
     // Game Lookup

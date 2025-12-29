@@ -50,4 +50,14 @@ return [
         'key' => env('PRICECHARTING_API_KEY'),
     ],
 
+    'ebay' => [
+        'client_id' => env('EBAY_CLIENT_ID'),
+        'client_secret' => env('EBAY_CLIENT_SECRET'),
+    ],
+
+    'igdb' => [
+        'client_id' => env('IGDB_CLIENT_ID'),
+        'client_secret' => env('IGDB_CLIENT_SECRET'),
+    ],
+
 ];

@@ -6,35 +6,28 @@ use App\Models\Game;
 use App\Models\Platform;
 use App\Models\CatalogGame;
 use App\Services\RawgService;
-use App\Services\PriceChartingService;
-use App\Services\GogService;
-use App\Services\SteamService;
-use App\Services\PlaystationService;
+use App\Services\IgdbService;
+use App\Services\GamePriceManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class GameController extends Controller
 {
     protected $rawgService;
-    protected $priceChartingService;
-    protected $gogService;
-    protected $steamService;
-    protected $playstationService;
+    protected $igdbService;
+    protected $gamePriceManager;
 
     public function __construct(
-        RawgService $rawgService, 
-        PriceChartingService $priceChartingService, 
-        GogService $gogService,
-        SteamService $steamService,
-        PlaystationService $playstationService
+        RawgService $rawgService,
+        IgdbService $igdbService,
+        GamePriceManager $gamePriceManager
     ) {
         $this->rawgService = $rawgService;
-        $this->priceChartingService = $priceChartingService;
-        $this->gogService = $gogService;
-        $this->steamService = $steamService;
-        $this->playstationService = $playstationService;
+        $this->igdbService = $igdbService;
+        $this->gamePriceManager = $gamePriceManager;
     }
 
     public function index(Request $request)
@@ -135,6 +128,7 @@ class GameController extends Controller
             'platform_id' => 'required|exists:platforms,id',
             'price' => 'nullable|numeric|min:0',
             'current_price' => 'nullable|numeric|min:0',
+            'price_source' => 'nullable|string|max:255',
             'purchase_location' => 'nullable|string|max:255',
             'purchased' => 'boolean',
             'image_url' => 'nullable|string',
@@ -266,6 +260,7 @@ class GameController extends Controller
             'platform_id' => 'required|exists:platforms,id',
             'price' => 'nullable|numeric|min:0',
             'current_price' => 'nullable|numeric|min:0',
+            'price_source' => 'nullable|string|max:255',
             'purchase_location' => 'nullable|string|max:255',
             'purchased' => 'boolean',
             'image_url' => 'nullable|string',
@@ -307,126 +302,39 @@ class GameController extends Controller
             abort(403);
         }
 
-        $price = null;
-        $source = '';
+        $result = $this->gamePriceManager->updateGamePrice($game);
 
-        // 1. Try PriceCharting (Best for Console/Physical Collection Value)
-        // Only if configured and price not found yet
-        if (config('services.pricecharting.key')) {
-            $game->load('platform');
-            $pcPrice = $this->priceChartingService->getPrice($game->title, $game->platform->name ?? null);
-            if ($pcPrice !== null) {
-                $price = $pcPrice;
-                $source = 'PriceCharting (Value)';
-            }
-        }
-
-        // 2. Try PlayStation Store if platform matches
-        if ($price === null && $game->platform) {
-            $platName = strtolower($game->platform->name);
-            $platSlug = strtolower($game->platform->slug);
-            if (str_contains($platName, 'playstation') || str_contains($platName, 'ps') || str_contains($platSlug, 'ps')) {
-                $psPrice = $this->playstationService->getPrice($game->title);
-                if ($psPrice !== null) {
-                    $price = $psPrice;
-                    $source = 'PlayStation Store';
-                }
-            }
-        }
-
-        // 3. Try Steam Store API if AppID exists and no price yet
-        if ($price === null && $game->steam_appid) {
-            $steamPrice = $this->steamService->getPrice($game->steam_appid);
-            if ($steamPrice !== null) {
-                $price = $steamPrice;
-                $source = 'Steam';
-            }
-        }
-
-        // 3. Try Steam Search if no price yet (and PC platform)
-        if ($price === null && $game->platform && $game->platform->slug === 'pc') {
-            $steamData = $this->steamService->searchAndGetPrice($game->title);
-            if ($steamData) {
-                $price = $steamData['price'];
-                $source = 'Steam (Search)';
-                // Optionally save the AppID for future use
-                if (!$game->steam_appid) {
-                    $game->steam_appid = $steamData['appid'];
-                    // $game->save(); // Will be saved at the end with price update
-                }
-            }
-        }
-
-        // 4. Try GOG API
-        if ($price === null) {
-            $gogPrice = $this->gogService->getPrice($game->title);
-            if ($gogPrice !== null) {
-                $price = $gogPrice;
-                $source = 'GOG';
-            }
-        }
-
-        // 4. Try CheapShark API if no price found yet
-        if ($price === null) {
-            $cheapSharkPrice = $this->getCheapSharkPrice($game->title);
-            if ($cheapSharkPrice !== null) {
-                // CheapShark is in USD, convert to GBP (Approximate rate: 0.82)
-                $price = $cheapSharkPrice * 0.82; 
-                $source = 'CheapShark (Est.)';
-            }
-        }
-
-        if ($price !== null) {
-            $game->update([
-                'current_price' => $price
-            ]);
-            
-            $message = "Price updated via $source.";
-
+        if ($result) {
             if ($request->wantsJson()) {
                 return response()->json([
-                    'message' => $message, 
-                    'current_price' => $game->current_price,
-                    'source' => $source
+                    'message' => $result['message'], 
+                    'current_price' => $result['price'],
+                    'source' => $result['source']
                 ]);
             }
-            return redirect()->back()->with('success', $message);
+            return redirect()->back()->with('success', $result['message']);
         }
 
+        Log::warning("Could not find price for game: {$game->title} from any source");
         $errorMsg = 'Could not fetch price details from available sources.';
         
-        // Add hint if PriceCharting is not configured and it's a console game
-        if (!config('services.pricecharting.key') && $game->platform && $game->platform->slug !== 'pc') {
-             $errorMsg .= ' (PriceCharting API Key is missing, which is required for console games)';
+        $missingKeys = [];
+        if (!config('services.pricecharting.key') || str_contains(config('services.pricecharting.key'), 'your_')) {
+            $missingKeys[] = 'PriceCharting';
+        }
+        if (!config('services.ebay.client_id') || str_contains(config('services.ebay.client_id'), 'your_')) {
+            $missingKeys[] = 'eBay';
+        }
+
+        if (!empty($missingKeys)) {
+            $errorMsg .= ' (Missing/Invalid keys for: ' . implode(', ', $missingKeys) . ')';
         }
 
         if ($request->wantsJson()) {
             return response()->json(['error' => $errorMsg], 422);
         }
         
-        // Return with 'error' flash message instead of validation errors for better UI handling
         return redirect()->back()->with('error', $errorMsg);
-    }
-
-    private function getCheapSharkPrice($title)
-    {
-        try {
-            $response = Http::get("https://www.cheapshark.com/api/1.0/games", [
-                'title' => $title,
-                'limit' => 1,
-            ]);
-
-            if ($response->successful()) {
-                $data = $response->json();
-                if (!empty($data)) {
-                    // CheapShark returns 'cheapest' as a string, e.g., "19.99"
-                    return (float) $data[0]['cheapest'];
-                }
-            }
-        } catch (\Exception $e) {
-            // Log error or ignore
-        }
-        return null;
     }
 
     public function refreshMetadata(Request $request, Game $game)
@@ -436,38 +344,63 @@ class GameController extends Controller
         }
 
         $details = null;
+        $source = null;
 
         // 1. Try by RAWG ID if we have it
         if ($game->rawg_id) {
             $details = $this->rawgService->getGameDetails($game->rawg_id);
+            if ($details) $source = 'RAWG';
         }
 
-        // 2. If no ID or failed, try searching by title
+        // 2. Try by IGDB ID if we have it and RAWG failed or wasn't set
+        if (!$details && $game->igdb_id) {
+            $details = $this->igdbService->getGameDetails($game->igdb_id);
+            if ($details) $source = 'IGDB';
+        }
+
+        // 3. If no details yet, try searching by title on RAWG
         if (!$details) {
             $searchResults = $this->rawgService->searchGames($game->title);
             
             if (!empty($searchResults) && isset($searchResults[0])) {
                 $bestMatch = $searchResults[0];
                 $details = $this->rawgService->getGameDetails($bestMatch['id']);
+                if ($details) $source = 'RAWG';
+            }
+        }
+
+        // 4. If still no details, try searching by title on IGDB
+        if (!$details) {
+            $searchResults = $this->igdbService->searchGames($game->title);
+
+            if (!empty($searchResults) && isset($searchResults[0])) {
+                $bestMatch = $searchResults[0];
+                $details = $this->igdbService->getGameDetails($bestMatch['id']);
+                if ($details) $source = 'IGDB';
             }
         }
 
         if (!$details) {
             if ($request->wantsJson()) {
-                return response()->json(['error' => 'Could not find game details on RAWG.'], 404);
+                return response()->json(['error' => 'Could not find game details on RAWG or IGDB.'], 404);
             }
-            return redirect()->back()->withErrors(['message' => 'Could not find game details on RAWG.']);
+            return redirect()->back()->withErrors(['message' => 'Could not find game details on RAWG or IGDB.']);
         }
 
-        // 3. Update Game
+        // 5. Update Game
         $updateData = [
             'title' => $details['name'],
-            'rawg_id' => $details['id'],
             'metascore' => $details['metacritic'] ?? null,
             'released_at' => $details['released'] ?? null,
             'genres' => isset($details['genres']) ? implode(', ', array_column($details['genres'], 'name')) : null,
             'rating' => $details['rating'] ?? null,
         ];
+
+        if ($source === 'RAWG') {
+            $updateData['rawg_id'] = $details['id'];
+        } elseif ($source === 'IGDB') {
+            $updateData['igdb_id'] = $details['id'];
+        }
         
         // Only update image if it's missing
         if (empty($game->image_url) && !empty($details['background_image'])) {
@@ -480,7 +413,7 @@ class GameController extends Controller
             return response()->json(['message' => 'Game details updated.', 'game' => $game]);
         }
 
-        return redirect()->back()->with('success', 'Game details updated from RAWG.');
+        return redirect()->back()->with('success', "Game details updated from {$source}.");
     }
 
     public function destroy(Request $request, Game $game)

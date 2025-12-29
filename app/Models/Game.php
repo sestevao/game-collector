@@ -8,22 +8,24 @@ class Game extends Model
 {
     protected $fillable = [
         'user_id',
-        'platform_id',
-        'steam_appid',
-        'catalog_game_id',
-        'rawg_id',
         'title',
+        'platform_id',
         'price',
         'current_price',
+        'price_source',
         'purchase_location',
         'purchased',
         'image_url',
+        'catalog_game_id',
+        'steam_appid',
+        'rawg_id',
+        'igdb_id',
         'metascore',
-        'rating',
         'released_at',
         'genres',
-        'chart_ranking',
+        'rating',
         'status',
+        'details',
     ];
 
     protected $casts = [

@@ -9,6 +9,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import Checkbox from '@/Components/Checkbox.vue';
+import PlatformIcon from '@/Components/PlatformIcon.vue';
 import ImportImageModal from './ImportImageModal.vue';
 
 const props = defineProps({
@@ -36,6 +37,7 @@ const form = useForm({
     platform_id: '',
     price: '',
     current_price: '',
+    price_source: '',
     purchase_location: '',
     purchased: false,
     image_url: '',
@@ -153,6 +155,7 @@ const editGame = (game) => {
     form.platform_id = game.platform_id;
     form.price = game.price;
     form.current_price = game.current_price;
+    form.price_source = game.price_source;
     form.purchase_location = game.purchase_location;
     form.purchased = !!game.purchased; // ensure boolean
     form.image_url = game.image_url;
@@ -183,12 +186,14 @@ const submit = () => {
                 ...data,
                 _method: 'put',
             })).post(route('games.update', editingGame.value.id), {
+                preserveScroll: true,
                 onSuccess: () => {
                     cancelAddingGame();
                 },
             });
         } else {
             form.put(route('games.update', editingGame.value.id), {
+                preserveScroll: true,
                 onSuccess: () => {
                     cancelAddingGame();
                 },
@@ -296,10 +301,10 @@ const refreshPrice = (game) => {
     router.post(route('games.refresh-price', game.id), {}, {
         preserveScroll: true,
         onSuccess: (page) => {
-            if (page.props.flash.error) {
+            if (page.props.flash?.error) {
                 alert('Error: ' + page.props.flash.error);
             } else {
-                const msg = page.props.flash.success || `Price refreshed for ${game.title}`;
+                const msg = page.props.flash?.success || `Price refreshed for ${game.title}`;
                 alert(msg);
             }
         },
@@ -579,8 +584,8 @@ const importSteam = () => {
                                     class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                                     alt="Game Cover"
                                 />
-                                <div class="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                                    {{ game.platform?.name || 'Unknown' }}
+                                <div class="absolute top-2 right-2 bg-black/70 text-white p-1.5 rounded-lg shadow-sm backdrop-blur-sm" :title="game.platform?.name">
+                                    <PlatformIcon :platform="game.platform" className="w-5 h-5" />
                                 </div>
                                 <div v-if="game.metascore" class="absolute top-2 left-2 bg-green-600 text-white text-xs font-bold px-2 py-1 rounded border border-green-500">
                                     {{ game.metascore }}
@@ -612,6 +617,9 @@ const importSteam = () => {
                                         <div class="text-xs text-gray-500 uppercase">Value</div>
                                         <div class="text-lg font-bold text-indigo-600 dark:text-indigo-400">
                                             {{ game.current_price ? formatCurrency(game.current_price) : '--' }}
+                                        </div>
+                                        <div v-if="game.price_source" class="text-[10px] text-gray-400 truncate max-w-[100px]" :title="game.price_source">
+                                            {{ game.price_source }}
                                         </div>
                                     </div>
                                     <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -665,14 +673,20 @@ const importSteam = () => {
                                 <div class="flex justify-between">
                                     <div>
                                         <h3 class="font-bold text-gray-900 dark:text-gray-100 line-clamp-1">{{ game.title }}</h3>
-                                        <div class="text-xs text-gray-500 flex gap-2">
-                                            <span>{{ game.platform?.name || 'Unknown' }}</span>
+                                        <div class="text-xs text-gray-500 flex items-center gap-2">
+                                            <div class="flex items-center gap-1">
+                                                <PlatformIcon :platform="game.platform" className="w-3 h-3" />
+                                                <span>{{ game.platform?.name || 'Unknown' }}</span>
+                                            </div>
                                             <span v-if="game.released_at">• {{ new Date(game.released_at).getFullYear() }}</span>
                                             <span v-if="game.status && game.status !== 'uncategorized'" class="capitalize px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-[10px]">{{ game.status.replace('_', ' ') }}</span>
                                         </div>
                                     </div>
                                     <div class="text-right">
                                         <div class="font-bold text-indigo-600 dark:text-indigo-400">{{ game.current_price ? formatCurrency(game.current_price) : '--' }}</div>
+                                        <div v-if="game.price_source" class="text-[10px] text-gray-400" :title="game.price_source">
+                                            {{ game.price_source }}
+                                        </div>
                                     </div>
                                 </div>
                                 
@@ -934,7 +948,7 @@ const importSteam = () => {
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <InputLabel for="purchase_location" value="Purchase Location" />
                             <TextInput
@@ -945,6 +959,17 @@ const importSteam = () => {
                                 placeholder="Store / Website"
                             />
                             <InputError :message="form.errors.purchase_location" class="mt-2" />
+                        </div>
+                        <div>
+                            <InputLabel for="price_source" value="Price Source" />
+                            <TextInput
+                                id="price_source"
+                                v-model="form.price_source"
+                                type="text"
+                                class="mt-1 block w-full"
+                                placeholder="e.g. PriceCharting"
+                            />
+                            <InputError :message="form.errors.price_source" class="mt-2" />
                         </div>
                     </div>
 

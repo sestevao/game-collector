@@ -70,4 +70,25 @@ class RawgService
 
         return $response->json();
     }
+
+    public function getPlatforms()
+    {
+        if (!$this->apiKey) return [];
+        $response = Http::get("{$this->baseUrl}/platforms", ['key' => $this->apiKey, 'page_size' => 40]);
+        return $response->json()['results'] ?? [];
+    }
+
+    public function getStores()
+    {
+        if (!$this->apiKey) return [];
+        $response = Http::get("{$this->baseUrl}/stores", ['key' => $this->apiKey]);
+        return $response->json()['results'] ?? [];
+    }
+
+    public function getGenres()
+    {
+        if (!$this->apiKey) return [];
+        $response = Http::get("{$this->baseUrl}/genres", ['key' => $this->apiKey, 'page_size' => 40]);
+        return $response->json()['results'] ?? [];
+    }
 }

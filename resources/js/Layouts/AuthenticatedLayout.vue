@@ -142,6 +142,12 @@ const showingNavigationDropdown = ref(false);
                             Home
                         </ResponsiveNavLink>
                         <ResponsiveNavLink
+                            :href="route('games.index')"
+                            :active="route().current('games.index')"
+                        >
+                            My Library
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
                             :href="route('reviews.index')"
                             :active="route().current('reviews.index')"
                         >
@@ -152,24 +158,6 @@ const showingNavigationDropdown = ref(false);
                             :active="route().current('user.show')"
                         >
                             Profile
-                        </ResponsiveNavLink>
-                        <ResponsiveNavLink
-                            :href="route('games.index')"
-                            :active="route().current('games.index')"
-                        >
-                            My Library
-                        </ResponsiveNavLink>
-                         <ResponsiveNavLink
-                            href="#"
-                            :active="false"
-                        >
-                            Wishlist
-                        </ResponsiveNavLink>
-                        <ResponsiveNavLink
-                            href="#"
-                            :active="false"
-                        >
-                            People you follow
                         </ResponsiveNavLink>
                     </div>
 

@@ -1,13 +1,14 @@
 # Game Collector
 
-A modern, responsive web application for managing your video game collection. Track your games, monitor prices across different platforms (Steam, GOG, PlayStation Store), and automatically fetch metadata.
+A modern, responsive web application for managing your video game collection. Track your games, monitor prices across different platforms (Steam, GOG, PlayStation Store, eBay), and automatically fetch metadata.
 
 ## 🚀 Features
 
 -   **Library Management**: Add, edit, and organize your game collection.
--   **Automated Metadata**: Automatically fetch game details (cover art, release dates, metascores) using the [RAWG API](https://rawg.io/).
+-   **Automated Metadata**: Automatically fetch game details (cover art, release dates, metascores) using the **RAWG API** and **IGDB API**.
 -   **Price Tracking**:
     -   Real-time price updates from **Steam**, **GOG**, **CheapShark**, and **PriceCharting**.
+    -   **eBay Integration**: Automatically estimates market value for physical games using "Buy It Now" listings.
     -   **PlayStation Store** integration (via custom web scraping) for console game prices.
 -   **Steam Import**: Import your entire Steam library automatically.
 -   **Image Scanning**: Add games by scanning their cover art (powered by Google Cloud Vision).
@@ -50,6 +51,16 @@ A modern, responsive web application for managing your video game collection. Tr
 
     # API Keys
     RAWG_API_KEY=your_rawg_key
+    
+    # IGDB (Twitch Developer)
+    IGDB_CLIENT_ID=your_client_id
+    IGDB_CLIENT_SECRET=your_client_secret
+
+    # eBay (Developers Program)
+    EBAY_CLIENT_ID=your_ebay_client_id
+    EBAY_CLIENT_SECRET=your_ebay_client_secret
+
+    # Other Services
     GOOGLE_APPLICATION_CREDENTIALS=path/to/google-vision-credentials.json
     PRICECHARTING_KEY=your_pricecharting_key
     ```
