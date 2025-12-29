@@ -288,7 +288,12 @@ const setSort = (field) => {
         orderDirection.value = orderDirection.value === 'asc' ? 'desc' : 'asc';
     } else {
         orderBy.value = field;
-        orderDirection.value = 'desc';
+        // Default direction based on field type
+        if (field === 'title' || field === 'platform') {
+            orderDirection.value = 'asc';
+        } else {
+            orderDirection.value = 'desc';
+        }
     }
     handleSearch();
 };
@@ -486,6 +491,10 @@ const importSteam = () => {
                         <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
                             <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Order By</p>
                             <div class="space-y-1">
+                                <button @click="setSort('title')" class="w-full text-left flex items-center gap-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
+                                    <span :class="{'font-bold text-indigo-500': orderBy === 'title'}">Name</span>
+                                    <span v-if="orderBy === 'title'" class="text-xs">{{ orderDirection === 'asc' ? '↑' : '↓' }}</span>
+                                </button>
                                 <button @click="setSort('released_at')" class="w-full text-left flex items-center gap-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
                                     <span :class="{'font-bold text-indigo-500': orderBy === 'released_at'}">Release date</span>
                                     <span v-if="orderBy === 'released_at'" class="text-xs">{{ orderDirection === 'asc' ? '↑' : '↓' }}</span>
@@ -493,6 +502,14 @@ const importSteam = () => {
                                 <button @click="setSort('created_at')" class="w-full text-left flex items-center gap-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
                                     <span :class="{'font-bold text-indigo-500': orderBy === 'created_at'}">Date Added</span>
                                     <span v-if="orderBy === 'created_at'" class="text-xs">{{ orderDirection === 'asc' ? '↑' : '↓' }}</span>
+                                </button>
+                                <button @click="setSort('metascore')" class="w-full text-left flex items-center gap-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
+                                    <span :class="{'font-bold text-indigo-500': orderBy === 'metascore'}">Metascore</span>
+                                    <span v-if="orderBy === 'metascore'" class="text-xs">{{ orderDirection === 'asc' ? '↑' : '↓' }}</span>
+                                </button>
+                                <button @click="setSort('current_price')" class="w-full text-left flex items-center gap-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
+                                    <span :class="{'font-bold text-indigo-500': orderBy === 'current_price'}">Value</span>
+                                    <span v-if="orderBy === 'current_price'" class="text-xs">{{ orderDirection === 'asc' ? '↑' : '↓' }}</span>
                                 </button>
                                 <button @click="setSort('platform')" class="w-full text-left flex items-center gap-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
                                     <span :class="{'font-bold text-indigo-500': orderBy === 'platform'}">Platform</span>
@@ -597,6 +614,13 @@ const importSteam = () => {
                                     <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 leading-tight line-clamp-2">{{ game.title }}</h3>
                                 </div>
                                 
+                                <div class="mb-3">
+                                    <span v-if="game.platform" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+                                        <PlatformIcon :platform="game.platform" className="w-3 h-3" />
+                                        {{ game.platform.name }}
+                                    </span>
+                                </div>
+                                
                                 <div class="text-sm text-gray-600 dark:text-gray-400 mb-4 space-y-1">
                                     <div v-if="game.released_at" class="flex justify-between">
                                         <span>Release date:</span>
@@ -674,10 +698,11 @@ const importSteam = () => {
                                     <div>
                                         <h3 class="font-bold text-gray-900 dark:text-gray-100 line-clamp-1">{{ game.title }}</h3>
                                         <div class="text-xs text-gray-500 flex items-center gap-2">
-                                            <div class="flex items-center gap-1">
+                                            <span v-if="game.platform" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
                                                 <PlatformIcon :platform="game.platform" className="w-3 h-3" />
-                                                <span>{{ game.platform?.name || 'Unknown' }}</span>
-                                            </div>
+                                                {{ game.platform.name }}
+                                            </span>
+                                            <span v-else class="text-xs text-gray-400">Unknown Platform</span>
                                             <span v-if="game.released_at">• {{ new Date(game.released_at).getFullYear() }}</span>
                                             <span v-if="game.status && game.status !== 'uncategorized'" class="capitalize px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-[10px]">{{ game.status.replace('_', ' ') }}</span>
                                         </div>

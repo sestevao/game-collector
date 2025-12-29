@@ -14,6 +14,9 @@ import puppeteer from 'puppeteer';
     const encodedQuery = encodeURIComponent(searchQuery);
     const url = `https://uk.webuy.com/search?stext=${encodedQuery}`;
 
+    let results = [];
+    let apiResponse = null;
+
     try {
         const browser = await puppeteer.launch({
             headless: 'new',
@@ -24,11 +27,12 @@ import puppeteer from 'puppeteer';
         // Set User-Agent to look like a real browser
         await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
-        let apiResponse = null;
+        // let apiResponse = null; // Moved to outer scope
 
         // Listen for API responses
         page.on('response', async response => {
             const url = response.url();
+            console.error('Response URL:', url); 
             if (url.includes('boxes') || url.includes('search')) {
                 try {
                     const json = await response.json();
@@ -53,11 +57,14 @@ import puppeteer from 'puppeteer';
             process.exit(1);
         }
 
+        // console.error('Page Title:', pageTitle); // Debug
+
         // Wait for results to load
         try {
-            await page.waitForSelector('.product-main-price', { timeout: 5000 });
+            await page.waitForSelector('.product-main-price', { timeout: 10000 });
         } catch (e) {
-            // If selector not found, might be no results or different layout, continue to fallback
+            // console.error('Selector .product-main-price not found');
+            // Check if we have results in another format
         }
 
         if (apiResponse) {
@@ -83,7 +90,7 @@ import puppeteer from 'puppeteer';
         }
 
         // Extract data from the page using DOM
-        const results = await page.evaluate(() => {
+        results = await page.evaluate(() => {
             const items = [];
             
             // Strategy: Find all price elements, then find their related titles
@@ -135,5 +142,11 @@ import puppeteer from 'puppeteer';
     } catch (error) {
         console.log(JSON.stringify({ error: error.message }));
         process.exit(1);
+    } finally {
+        if (results.length === 0 && !apiResponse) {
+             const fs = require('fs');
+             const html = await page.content();
+             fs.writeFileSync('cex_dump.html', html);
+        }
     }
 })();
