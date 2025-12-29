@@ -66,6 +66,7 @@ import fs from 'fs';
         try {
             await page.waitForSelector('.product-main-price', { timeout: 10000 });
         } catch (e) {
+            
             // console.error('Selector .product-main-price not found');
             // Check if we have results in another format
         }
