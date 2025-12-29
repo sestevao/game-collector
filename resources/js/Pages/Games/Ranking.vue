@@ -148,120 +148,121 @@ const submit = () => {
 
                 <div v-else>
                     <div v-if="viewMode === 'gallery'" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                    <div v-for="game in games" :key="game.id" class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg flex flex-col h-full group relative">
-                        <!-- Image -->
-                        <div class="relative h-48 w-full overflow-hidden">
-                            <img :src="game.background_image" :alt="game.name" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110">
-                            <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300"></div>
-                            
-                            <!-- Platform Icons -->
-                            <div class="absolute top-2 left-2 flex flex-wrap gap-1 max-w-[70%]">
-                                <div v-for="p in (game.parent_platforms || [])" :key="p.platform.id" class="bg-black/60 backdrop-blur-sm p-1 rounded text-white" :title="p.platform.name">
-                                    <PlatformIcon :platform="p.platform" className="w-4 h-4" />
+                        <div v-for="game in games" :key="game.id" class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg flex flex-col h-full group relative">
+                            <!-- Image -->
+                            <div class="relative h-48 w-full overflow-hidden">
+                                <img :src="game.background_image" :alt="game.name" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110">
+                                <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300"></div>
+                                
+                                <!-- Platform Icons -->
+                                <div class="absolute top-2 left-2 flex flex-wrap gap-1 max-w-[70%]">
+                                    <div v-for="p in (game.parent_platforms || [])" :key="p.platform.id" class="bg-black/60 backdrop-blur-sm p-1 rounded text-white" :title="p.platform.name">
+                                        <PlatformIcon :platform="p.platform" className="w-4 h-4" />
+                                    </div>
+                                </div>
+
+                                <!-- Metascore Badge -->
+                                <div v-if="game.metacritic" class="absolute top-2 right-2 px-2 py-1 rounded text-xs font-bold" 
+                                    :class="{
+                                        'bg-green-500 text-white': game.metacritic >= 75,
+                                        'bg-yellow-500 text-black': game.metacritic >= 50 && game.metacritic < 75,
+                                        'bg-red-500 text-white': game.metacritic < 50
+                                    }">
+                                    {{ game.metacritic }}
                                 </div>
                             </div>
 
-                            <!-- Metascore Badge -->
-                            <div v-if="game.metacritic" class="absolute top-2 right-2 px-2 py-1 rounded text-xs font-bold" 
-                                :class="{
-                                    'bg-green-500 text-white': game.metacritic >= 75,
-                                    'bg-yellow-500 text-black': game.metacritic >= 50 && game.metacritic < 75,
-                                    'bg-red-500 text-white': game.metacritic < 50
-                                }">
-                                {{ game.metacritic }}
-                            </div>
-                        </div>
+                            <!-- Content -->
+                            <div class="p-4 flex-1 flex flex-col">
+                                <div class="flex justify-between items-start mb-2">
+                                    <h3 class="text-lg font-bold text-gray-900 dark:text-white line-clamp-2" :title="game.name">
+                                        {{ game.name }}
+                                    </h3>
+                                </div>
 
-                        <!-- Content -->
-                        <div class="p-4 flex-1 flex flex-col">
-                            <div class="flex justify-between items-start mb-2">
-                                <h3 class="text-lg font-bold text-gray-900 dark:text-white line-clamp-2" :title="game.name">
-                                    {{ game.name }}
-                                </h3>
-                            </div>
-
-                            <div class="flex flex-wrap gap-1 mb-2">
-                                <span v-for="p in (game.platforms || []).slice(0, 3)" :key="p.platform.id" class="text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded">
-                                    {{ p.platform.name }}
-                                </span>
-                                <span v-if="(game.platforms || []).length > 3" class="text-[10px] text-gray-500 self-center">
-                                    +{{ game.platforms.length - 3 }}
-                                </span>
-                            </div>
-                            
-                            <div class="mt-auto space-y-2">
-                                <div class="flex justify-between items-center text-sm text-gray-500 dark:text-gray-400">
-                                    <span>{{ game.released }}</span>
-                                    <span v-if="game.rating" class="flex items-center">
-                                        <svg class="w-4 h-4 text-yellow-400 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                        </svg>
-                                        {{ game.rating }}
+                                <div class="flex flex-wrap gap-1 mb-2">
+                                    <span v-for="p in (game.platforms || []).slice(0, 3)" :key="p.platform.id" class="text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded">
+                                        {{ p.platform.name }}
+                                    </span>
+                                    <span v-if="(game.platforms || []).length > 3" class="text-[10px] text-gray-500 self-center">
+                                        +{{ game.platforms.length - 3 }}
                                     </span>
                                 </div>
                                 
-                                <button @click="openAddModal(game)" class="w-full flex justify-center items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
-                                    Add to Library
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div v-else class="flex flex-col gap-4">
-                    <div v-for="game in games" :key="game.id" class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg flex overflow-hidden group">
-                        <!-- Small Image -->
-                        <div class="w-32 h-24 flex-shrink-0 relative bg-gray-200 dark:bg-gray-900">
-                            <img 
-                                :src="game.background_image || 'https://placehold.co/600x400?text=No+Image'" 
-                                class="w-full h-full object-cover" 
-                                alt="Game Cover"
-                            />
-                            <div v-if="game.metacritic" class="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[10px] font-bold border"
-                                :class="{
-                                    'bg-green-600 text-white border-green-500': game.metacritic >= 75,
-                                    'bg-yellow-500 text-black border-yellow-400': game.metacritic >= 50 && game.metacritic < 75,
-                                    'bg-red-600 text-white border-red-500': game.metacritic < 50
-                                }">
-                                {{ game.metacritic }}
-                            </div>
-                        </div>
-                        
-                        <!-- Content -->
-                        <div class="flex-1 p-3 flex flex-col justify-between">
-                            <div class="flex justify-between">
-                                <div>
-                                    <h3 class="font-bold text-gray-900 dark:text-gray-100 line-clamp-1">{{ game.name }}</h3>
-                                    <div class="text-xs text-gray-500 flex items-center gap-2 mt-1">
-                                        <div class="flex flex-wrap gap-1">
-                                            <span v-for="p in (game.parent_platforms || [])" :key="p.platform.id" :title="p.platform.name">
-                                                <PlatformIcon :platform="p.platform" className="w-3 h-3 text-gray-400" />
-                                            </span>
-                                        </div>
-                                        <span v-if="game.released">• {{ new Date(game.released).getFullYear() }}</span>
-                                        <span v-if="game.rating" class="flex items-center text-yellow-500">
-                                             <svg class="w-3 h-3 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <div class="mt-auto space-y-2">
+                                    <div class="flex justify-between items-center text-sm text-gray-500 dark:text-gray-400">
+                                        <span>{{ game.released }}</span>
+                                        <span v-if="game.rating" class="flex items-center">
+                                            <svg class="w-4 h-4 text-yellow-400 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                                             </svg>
                                             {{ game.rating }}
                                         </span>
                                     </div>
-                                </div>
-                                <div class="flex items-center">
-                                     <button @click="openAddModal(game)" class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded transition">
-                                        Add
+                                    
+                                    <button @click="openAddModal(game)" class="w-full flex justify-center items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
+                                        Add to Library
                                     </button>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <div v-else class="flex flex-col gap-4">
+                        <div v-for="game in games" :key="game.id" class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg flex overflow-hidden group">
+                            <!-- Small Image -->
+                            <div class="w-32 h-24 flex-shrink-0 relative bg-gray-200 dark:bg-gray-900">
+                                <img 
+                                    :src="game.background_image || 'https://placehold.co/600x400?text=No+Image'" 
+                                    class="w-full h-full object-cover" 
+                                    alt="Game Cover"
+                                />
+                                <div v-if="game.metacritic" class="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[10px] font-bold border"
+                                    :class="{
+                                        'bg-green-600 text-white border-green-500': game.metacritic >= 75,
+                                        'bg-yellow-500 text-black border-yellow-400': game.metacritic >= 50 && game.metacritic < 75,
+                                        'bg-red-600 text-white border-red-500': game.metacritic < 50
+                                    }">
+                                    {{ game.metacritic }}
+                                </div>
+                            </div>
                             
-                            <div class="flex justify-between items-end mt-2">
-                                 <div class="flex flex-wrap gap-1">
-                                    <span v-for="p in (game.platforms || []).slice(0, 3)" :key="p.platform.id" class="text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded">
-                                        {{ p.platform.name }}
-                                    </span>
-                                     <span v-if="(game.platforms || []).length > 3" class="text-[10px] text-gray-500 self-center">
-                                        +{{ game.platforms.length - 3 }}
-                                    </span>
+                            <!-- Content -->
+                            <div class="flex-1 p-3 flex flex-col justify-between">
+                                <div class="flex justify-between">
+                                    <div>
+                                        <h3 class="font-bold text-gray-900 dark:text-gray-100 line-clamp-1">{{ game.name }}</h3>
+                                        <div class="text-xs text-gray-500 flex items-center gap-2 mt-1">
+                                            <div class="flex flex-wrap gap-1">
+                                                <span v-for="p in (game.parent_platforms || [])" :key="p.platform.id" :title="p.platform.name">
+                                                    <PlatformIcon :platform="p.platform" className="w-3 h-3 text-gray-400" />
+                                                </span>
+                                            </div>
+                                            <span v-if="game.released">• {{ new Date(game.released).getFullYear() }}</span>
+                                            <span v-if="game.rating" class="flex items-center text-yellow-500">
+                                                <svg class="w-3 h-3 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                                </svg>
+                                                {{ game.rating }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center">
+                                        <button @click="openAddModal(game)" class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded transition">
+                                            Add
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex justify-between items-end mt-2">
+                                    <div class="flex flex-wrap gap-1">
+                                        <span v-for="p in (game.platforms || []).slice(0, 3)" :key="p.platform.id" class="text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded">
+                                            {{ p.platform.name }}
+                                        </span>
+                                        <span v-if="(game.platforms || []).length > 3" class="text-[10px] text-gray-500 self-center">
+                                            +{{ game.platforms.length - 3 }}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
