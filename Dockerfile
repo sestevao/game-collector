@@ -81,7 +81,7 @@ ENV APP_KEY=base64:2fl+Ktvkfl+Frkfl+Ktvkfl+Frkfl+Ktvkfl+Frkfl=
 RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-platform-reqs
 
 # Install Node dependencies and build assets
-RUN npm install && npm ci && npm run build
+RUN npm install && npm run build
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
