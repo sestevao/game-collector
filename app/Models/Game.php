@@ -30,6 +30,7 @@ class Game extends Model
 
     protected $casts = [
         'released_at' => 'date',
+        'market_prices' => 'array',
     ];
 
     public function catalogGame()

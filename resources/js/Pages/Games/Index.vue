@@ -614,7 +614,8 @@ const importSteam = () => {
                                     <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 leading-tight line-clamp-2">{{ game.title }}</h3>
                                 </div>
                                 
-                                <div class="mb-3">
+                                <div class="mb-3 platforms platforms_medium flex items-center">
+                                    <!-- <PlatformIcon v-if="game.platform" :platform="game.platform" className="w-5 h-5 text-gray-500 dark:text-gray-400" :title="game.platform.name" /> -->
                                     <span v-if="game.platform" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
                                         <PlatformIcon :platform="game.platform" className="w-3 h-3" />
                                         {{ game.platform.name }}
@@ -642,8 +643,23 @@ const importSteam = () => {
                                         <div class="text-lg font-bold text-indigo-600 dark:text-indigo-400">
                                             {{ game.current_price ? formatCurrency(game.current_price) : '--' }}
                                         </div>
-                                        <div v-if="game.price_source" class="text-[10px] text-gray-400 truncate max-w-[100px]" :title="game.price_source">
-                                            {{ game.price_source }}
+                                        <div class="flex items-center gap-1">
+                                            <div v-if="game.price_source" class="text-[10px] text-gray-400 truncate max-w-[100px]" :title="game.price_source">
+                                                {{ game.price_source }}
+                                            </div>
+                                            <!-- Market Prices Tooltip -->
+                                            <div v-if="game.market_prices && game.market_prices.length > 1" class="relative group/prices">
+                                                <span class="cursor-help text-[10px] text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-1 rounded hover:bg-indigo-100">
+                                                    +{{ game.market_prices.length - 1 }} more
+                                                </span>
+                                                <div class="absolute bottom-full left-0 mb-1 hidden group-hover/prices:block min-w-[180px] bg-white dark:bg-gray-800 p-2 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-50 text-xs">
+                                                     <div class="font-bold mb-1 text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 pb-1">Price Comparison</div>
+                                                     <div v-for="(mp, idx) in game.market_prices" :key="idx" class="flex justify-between items-center py-1.5 border-b border-gray-100 dark:border-gray-700 last:border-0 last:pb-0">
+                                                        <span class="text-gray-600 dark:text-gray-400 truncate pr-2 max-w-[100px]" :title="mp.source">{{ mp.source }}</span>
+                                                        <span class="font-bold text-gray-900 dark:text-gray-200">{{ formatCurrency(mp.price) }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -698,19 +714,33 @@ const importSteam = () => {
                                     <div>
                                         <h3 class="font-bold text-gray-900 dark:text-gray-100 line-clamp-1">{{ game.title }}</h3>
                                         <div class="text-xs text-gray-500 flex items-center gap-2">
-                                            <span v-if="game.platform" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
-                                                <PlatformIcon :platform="game.platform" className="w-3 h-3" />
-                                                {{ game.platform.name }}
-                                            </span>
-                                            <span v-else class="text-xs text-gray-400">Unknown Platform</span>
+                                            <div class="platforms platforms_medium flex items-center">
+                                                <PlatformIcon v-if="game.platform" :platform="game.platform" className="w-5 h-5 text-gray-500 dark:text-gray-400" :title="game.platform.name" />
+                                                <span v-else class="text-gray-400 text-xs">Unknown Platform</span>
+                                            </div>
                                             <span v-if="game.released_at">• {{ new Date(game.released_at).getFullYear() }}</span>
                                             <span v-if="game.status && game.status !== 'uncategorized'" class="capitalize px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-[10px]">{{ game.status.replace('_', ' ') }}</span>
                                         </div>
                                     </div>
                                     <div class="text-right">
                                         <div class="font-bold text-indigo-600 dark:text-indigo-400">{{ game.current_price ? formatCurrency(game.current_price) : '--' }}</div>
-                                        <div v-if="game.price_source" class="text-[10px] text-gray-400" :title="game.price_source">
-                                            {{ game.price_source }}
+                                        <div class="flex items-center justify-end gap-1">
+                                            <div v-if="game.price_source" class="text-[10px] text-gray-400" :title="game.price_source">
+                                                {{ game.price_source }}
+                                            </div>
+                                            <!-- Market Prices Tooltip -->
+                                            <div v-if="game.market_prices && game.market_prices.length > 1" class="relative group/prices text-left">
+                                                <span class="cursor-help text-[10px] text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-1 rounded hover:bg-indigo-100">
+                                                    +{{ game.market_prices.length - 1 }}
+                                                </span>
+                                                <div class="absolute bottom-full right-0 mb-1 hidden group-hover/prices:block min-w-[180px] bg-white dark:bg-gray-800 p-2 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-50 text-xs">
+                                                     <div class="font-bold mb-1 text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 pb-1">Price Comparison</div>
+                                                     <div v-for="(mp, idx) in game.market_prices" :key="idx" class="flex justify-between items-center py-1.5 border-b border-gray-100 dark:border-gray-700 last:border-0 last:pb-0">
+                                                        <span class="text-gray-600 dark:text-gray-400 truncate pr-2 max-w-[100px]" :title="mp.source">{{ mp.source }}</span>
+                                                        <span class="font-bold text-gray-900 dark:text-gray-200">{{ formatCurrency(mp.price) }}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

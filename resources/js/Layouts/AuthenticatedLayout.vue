@@ -34,7 +34,13 @@ const showingNavigationDropdown = ref(false);
                                 </Link>
                             </div>
                             
-                            <!-- Search Bar Placeholder or Breadcrumbs could go here -->
+                            <!-- Global Collection Value Display -->
+                             <div class="hidden md:flex items-center ml-4 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg">
+                                <span class="text-sm text-gray-600 dark:text-gray-400 mr-2">Collection Value:</span>
+                                <span class="text-lg font-bold text-indigo-600 dark:text-indigo-400">
+                                    £{{ $page.props.globalStats?.totalValue ? parseFloat($page.props.globalStats.totalValue).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00' }}
+                                </span>
+                            </div>
                         </div>
 
                         <div class="hidden sm:ms-6 sm:flex sm:items-center">

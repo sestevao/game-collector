@@ -4,6 +4,8 @@ namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use App\Models\Game;
+use Illuminate\Support\Facades\Auth;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -29,10 +31,18 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $totalValue = 0;
+        if ($request->user()) {
+            $totalValue = Game::where('user_id', $request->user()->id)->sum('current_price');
+        }
+
         return [
             ...parent::share($request),
             'auth' => [
                 'user' => $request->user(),
+            ],
+            'globalStats' => [
+                'totalValue' => $totalValue,
             ],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),

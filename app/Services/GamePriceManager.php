@@ -11,6 +11,7 @@ class GamePriceManager
     protected $priceChartingService;
     protected $ebayService;
     protected $cexService;
+    protected $amazonService;
     protected $playstationService;
     protected $steamService;
     protected $gogService;
@@ -19,6 +20,7 @@ class GamePriceManager
         PriceChartingService $priceChartingService,
         EbayService $ebayService,
         CexService $cexService,
+        AmazonService $amazonService,
         PlaystationService $playstationService,
         SteamService $steamService,
         GogService $gogService
@@ -26,6 +28,7 @@ class GamePriceManager
         $this->priceChartingService = $priceChartingService;
         $this->ebayService = $ebayService;
         $this->cexService = $cexService;
+        $this->amazonService = $amazonService;
         $this->playstationService = $playstationService;
         $this->steamService = $steamService;
         $this->gogService = $gogService;
@@ -41,153 +44,155 @@ class GamePriceManager
     {
         Log::info("Starting price refresh for game: {$game->title} (ID: {$game->id})");
 
-        $price = null;
-        $source = '';
+        $marketPrices = [];
+        $bestPrice = null;
+        $bestSource = '';
 
-        // 1. Try PriceCharting (Best for Console/Physical Collection Value)
+        // Helper to add price
+        $addPrice = function($source, $price) use (&$marketPrices) {
+            $marketPrices[] = [
+                'source' => $source,
+                'price' => (float) $price,
+                'currency' => 'GBP', // Assuming all normalized to GBP for now
+                'fetched_at' => now()->toIso8601String(),
+            ];
+        };
+
+        $game->loadMissing('platform');
+        $platformName = $game->platform ? $game->platform->name : null;
+
+        // 1. PriceCharting (Best for Console/Physical Collection Value)
         if (config('services.pricecharting.key')) {
             Log::info("Checking PriceCharting for: {$game->title}");
-            $game->loadMissing('platform');
-            $platformName = $game->platform ? $game->platform->name : null;
             $pcPrice = $this->priceChartingService->getPrice($game->title, $platformName);
             if ($pcPrice !== null) {
-                $price = $pcPrice;
-                $source = 'PriceCharting (Value)';
-                Log::info("Price found on PriceCharting: {$price}");
-            } else {
-                Log::info("No price found on PriceCharting");
+                $addPrice('PriceCharting', $pcPrice);
+                Log::info("Price found on PriceCharting: {$pcPrice}");
             }
-        } else {
-            Log::info("Skipping PriceCharting: API key not configured");
         }
 
-        // 1.5 Try eBay (if enabled and no price yet)
-        if ($price === null) {
+        // 2. eBay (Avg. BIN)
+        if (true) { // Always check eBay if enabled
             Log::info("Checking eBay for: {$game->title}");
-            $game->loadMissing('platform');
-            $platformName = $game->platform ? $game->platform->name : null;
             $ebayPrice = $this->ebayService->getPrice($game->title, $platformName);
             if ($ebayPrice !== null) {
-                $price = $ebayPrice;
-                $source = 'eBay (Avg. BIN)';
-                Log::info("Price found on eBay: {$price}");
-            } else {
-                Log::info("No price found on eBay");
+                $addPrice('eBay', $ebayPrice);
+                Log::info("Price found on eBay: {$ebayPrice}");
             }
         }
 
-        // 1.8 Try CeX (Best for UK Physical Games)
-        if ($price === null) {
+        // 3. CeX (Best for UK Physical Games)
+        if (true) {
             Log::info("Checking CeX for: {$game->title}");
-            $game->loadMissing('platform');
-            $platformName = $game->platform ? $game->platform->name : null;
             $cexPrice = $this->cexService->getPrice($game->title, $platformName);
             if ($cexPrice !== null) {
-                $price = $cexPrice;
-                $source = 'CeX (UK)';
-                Log::info("Price found on CeX: {$price}");
-            } else {
-                Log::info("No price found on CeX");
+                $addPrice('CeX', $cexPrice);
+                Log::info("Price found on CeX: {$cexPrice}");
             }
         }
 
-        // 2. Try PlayStation Store if platform matches
-        if ($price === null && $game->platform) {
+        // 4. Amazon (Physical/New)
+        if (true) {
+            Log::info("Checking Amazon for: {$game->title}");
+            $amazonPrice = $this->amazonService->getPrice($game->title, $platformName);
+            if ($amazonPrice !== null) {
+                $addPrice('Amazon', $amazonPrice);
+                Log::info("Price found on Amazon: {$amazonPrice}");
+            }
+        }
+
+        // 5. PlayStation Store
+        if ($game->platform) {
             $platName = strtolower($game->platform->name);
             $platSlug = strtolower($game->platform->slug);
             if (str_contains($platName, 'playstation') || str_contains($platName, 'ps') || str_contains($platSlug, 'ps')) {
                 Log::info("Checking PlayStation Store for: {$game->title}");
                 $psPrice = $this->playstationService->getPrice($game->title);
                 if ($psPrice !== null) {
-                    $price = $psPrice;
-                    $source = 'PlayStation Store';
-                    Log::info("Price found on PlayStation Store: {$price}");
-                } else {
-                    Log::info("No price found on PlayStation Store");
+                    $addPrice('PlayStation Store', $psPrice);
+                    Log::info("Price found on PlayStation Store: {$psPrice}");
                 }
             }
         }
 
-        // 3. Try Steam Store API if AppID exists and no price yet
-        if ($price === null && $game->steam_appid) {
+        // 6. Steam
+        if ($game->steam_appid) {
             Log::info("Checking Steam (AppID: {$game->steam_appid})");
             $steamPrice = $this->steamService->getPrice($game->steam_appid);
             if ($steamPrice !== null) {
-                $price = $steamPrice;
-                $source = 'Steam';
-                Log::info("Price found on Steam: {$price}");
-            } else {
-                Log::info("No price found on Steam (AppID)");
+                $addPrice('Steam', $steamPrice);
+                Log::info("Price found on Steam: {$steamPrice}");
             }
-        }
-
-        // 3. Try Steam Search if no price yet (and PC platform)
-        if ($price === null && $game->platform && $game->platform->slug === 'pc') {
+        } elseif ($game->platform && $game->platform->slug === 'pc') {
             Log::info("Searching Steam for: {$game->title}");
             $steamData = $this->steamService->searchAndGetPrice($game->title);
             if ($steamData) {
-                $price = $steamData['price'];
-                $source = 'Steam (Search)';
-                Log::info("Price found on Steam Search: {$price}");
-                // Optionally save the AppID for future use
+                $addPrice('Steam', $steamData['price']);
+                Log::info("Price found on Steam Search: {$steamData['price']}");
                 if (!$game->steam_appid) {
                     $game->steam_appid = $steamData['appid'];
-                    // We can save here or let the caller save. 
-                    // Since we are inside the service method which is about "updating game price", 
-                    // updating appid is a side effect but acceptable.
-                    // However, we want to persist it.
-                    $game->save(); 
+                    $game->save();
                 }
-            } else {
-                Log::info("No price found on Steam Search");
             }
         }
 
-        // 4. Try GOG API
-        if ($price === null) {
-            Log::info("Checking GOG for: {$game->title}");
-            $gogPrice = $this->gogService->getPrice($game->title);
-            if ($gogPrice !== null) {
-                $price = $gogPrice;
-                $source = 'GOG';
-                Log::info("Price found on GOG: {$price}");
-            } else {
-                Log::info("No price found on GOG");
+        // 7. GOG
+        Log::info("Checking GOG for: {$game->title}");
+        $gogPrice = $this->gogService->getPrice($game->title);
+        if ($gogPrice !== null) {
+            $addPrice('GOG', $gogPrice);
+            Log::info("Price found on GOG: {$gogPrice}");
+        }
+
+        // 8. CheapShark
+        Log::info("Checking CheapShark for: {$game->title}");
+        $cheapSharkPrice = $this->getCheapSharkPrice($game->title);
+        if ($cheapSharkPrice !== null) {
+            $priceGbp = $cheapSharkPrice * 0.82;
+            $addPrice('CheapShark', $priceGbp);
+            Log::info("Price found on CheapShark: {$priceGbp}");
+        }
+
+        // Determine Best Price (Prioritize: PriceCharting > eBay > CeX > Amazon > Store APIs)
+        // We iterate through the marketPrices to find the first one that matches our priority list
+        $priorityOrder = ['PriceCharting', 'eBay', 'CeX', 'Amazon', 'PlayStation Store', 'Steam', 'GOG', 'CheapShark'];
+        
+        foreach ($priorityOrder as $sourceName) {
+            foreach ($marketPrices as $mp) {
+                if (str_contains($mp['source'], $sourceName)) {
+                    $bestPrice = $mp['price'];
+                    $bestSource = $mp['source'];
+                    break 2;
+                }
             }
         }
 
-        // 4. Try CheapShark API if no price found yet
-        if ($price === null) {
-            Log::info("Checking CheapShark for: {$game->title}");
-            $cheapSharkPrice = $this->getCheapSharkPrice($game->title);
-            if ($cheapSharkPrice !== null) {
-                // CheapShark is in USD, convert to GBP (Approximate rate: 0.82)
-                $price = $cheapSharkPrice * 0.82; 
-                $source = 'CheapShark (Est.)';
-                Log::info("Price found on CheapShark: {$price}");
-            } else {
-                Log::info("No price found on CheapShark");
-            }
+        // Fallback if no priority match (just take the first one)
+        if ($bestPrice === null && count($marketPrices) > 0) {
+            $bestPrice = $marketPrices[0]['price'];
+            $bestSource = $marketPrices[0]['source'];
         }
 
-        if ($price !== null) {
+        if ($bestPrice !== null) {
             $game->update([
-                'current_price' => $price,
-                'price_source' => $source
+                'current_price' => $bestPrice,
+                'price_source' => $bestSource,
+                'market_prices' => $marketPrices // Save all prices
             ]);
             
-            $message = "Price updated via $source.";
+            $message = "Price updated via $bestSource. Found " . count($marketPrices) . " sources.";
             Log::info("Price refresh successful: {$message}");
             
             return [
-                'price' => $price,
-                'source' => $source,
+                'price' => $bestPrice,
+                'source' => $bestSource,
+                'market_prices' => $marketPrices,
                 'message' => $message
             ];
+        } else {
+            Log::warning("Price refresh failed: No prices found for {$game->title}");
+            return null;
         }
-
-        Log::warning("Could not find price for game: {$game->title} from any source");
-        return null;
     }
 
     private function getCheapSharkPrice($title)

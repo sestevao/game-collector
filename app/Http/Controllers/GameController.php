@@ -69,12 +69,30 @@ class GameController extends Controller
         $totalCost = Game::where('user_id', $request->user()->id)->sum('price');
         $totalValue = Game::where('user_id', $request->user()->id)->sum('current_price');
 
+        // Calculate counts for sidebar
+        $userId = $request->user()->id;
+        $statusCounts = Game::where('user_id', $userId)
+            ->selectRaw('status, count(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status')
+            ->toArray();
+
+        $counts = [
+            'all' => Game::where('user_id', $userId)->count(),
+            'uncategorized' => $statusCounts['uncategorized'] ?? 0,
+            'currently_playing' => $statusCounts['currently_playing'] ?? 0,
+            'completed' => $statusCounts['completed'] ?? 0,
+            'played' => $statusCounts['played'] ?? 0,
+            'not_played' => $statusCounts['not_played'] ?? 0,
+        ];
+
         return Inertia::render('Games/Index', [
             'games' => $games,
             'filters' => $request->only(['search', 'platform_id', 'status', 'order_by', 'direction', 'per_page']),
             'platforms' => Platform::all(),
             'totalCost' => $totalCost,
             'totalValue' => $totalValue,
+            'counts' => $counts,
         ]);
     }
 
