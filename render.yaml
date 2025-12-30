@@ -5,7 +5,7 @@ services:
     plan: free
     envVars:
       - key: APP_KEY
-        generateValue: true
+        sync: false
       - key: APP_DEBUG
         value: false
       - key: APP_ENV
