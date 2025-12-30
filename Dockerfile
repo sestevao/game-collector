@@ -77,7 +77,7 @@ WORKDIR /var/www/html
 COPY . .
 
 # Install PHP dependencies
-ENV APP_KEY=base64:2fl+Ktvkfl+Frkfl+Ktvkfl+Frkfl+Ktvkfl+Frkfl=
+ARG APP_KEY=base64:2fl+Ktvkfl+Frkfl+Ktvkfl+Frkfl+Ktvkfl+Frkfl=
 RUN composer install --no-interaction --optimize-autoloader --no-dev --ignore-platform-reqs
 
 # Install Node dependencies and build assets
