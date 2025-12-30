@@ -68,18 +68,17 @@ WORKDIR /var/www/html
 COPY . .
 
 # Install PHP dependencies
+ENV APP_KEY=base64:2fl+Ktvkfl+Frkfl+Ktvkfl+Frkfl+Ktvkfl+Frkfl=
 RUN composer install --no-interaction --optimize-autoloader --no-dev
 
 # Install Node dependencies and build assets
-# We set PUPPETEER_SKIP_DOWNLOAD to true for the build step to save time/space if we don't need it for build
-# But we DO need it for runtime. 
-# Actually, let's install it fully.
 RUN npm ci && npm run build
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Configure Apache DocumentRoot to point to public
+# Configure Apache
+RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/000-default.conf
 RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf

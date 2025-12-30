@@ -6,6 +6,11 @@ if [ -n "$RENDER_EXTERNAL_URL" ]; then
     export APP_URL="$RENDER_EXTERNAL_URL"
 fi
 
+echo "Environment check:"
+php -v
+node -v
+npm -v
+
 # Caching configuration
 echo "Caching configuration..."
 php artisan config:cache
