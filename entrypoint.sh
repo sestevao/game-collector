@@ -21,6 +21,11 @@ php artisan view:cache
 echo "Running migrations..."
 php artisan migrate --force
 
+# Run seeders (only if you want to seed on every deploy)
+echo "Running seeders..."
+php artisan db:seed --force
+
+
 # Start Apache
 echo "Starting Apache..."
 exec apache2-foreground

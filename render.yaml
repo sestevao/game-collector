@@ -35,6 +35,42 @@ services:
           name: game-collector-db
           property: password
 
+  - type: cron
+    name: game-price-refresher
+    env: docker
+    plan: free
+    schedule: "0 3 * * *" # Runs daily at 3:00 AM UTC
+    command: php artisan game:refresh-prices
+    envVars:
+      - key: APP_KEY
+        sync: false
+      - key: APP_ENV
+        value: production
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        fromDatabase:
+          name: game-collector-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: game-collector-db
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: game-collector-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: game-collector-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: game-collector-db
+          property: password
+
 databases:
   - name: game-collector-db
     plan: free
