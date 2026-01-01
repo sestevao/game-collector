@@ -60,4 +60,16 @@ return [
         'client_secret' => env('IGDB_CLIENT_SECRET'),
     ],
 
+    'currency_api' => [
+        'key' => env('CURRENCY_API_KEY'),
+    ],
+
+    'ocr' => [
+        'default' => env('OCR_DRIVER', 'tesseract'), // 'tesseract' or 'ocr_space'
+    ],
+
+    'ocr_space' => [
+        'key' => env('OCR_SPACE_KEY', 'helloworld'), // 'helloworld' is the free demo key
+    ],
+
 ];

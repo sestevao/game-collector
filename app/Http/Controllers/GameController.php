@@ -48,6 +48,12 @@ class GameController extends Controller
             $query->where('status', $request->status);
         }
 
+        // Filter by purchased status (default to all if not specified, or handle in frontend)
+        if ($request->has('purchased')) {
+            $isPurchased = filter_var($request->purchased, FILTER_VALIDATE_BOOLEAN);
+            $query->where('purchased', $isPurchased);
+        }
+
         $sortField = $request->input('order_by', 'created_at');
         $sortDirection = $request->input('direction', 'desc');
 
@@ -66,19 +72,29 @@ class GameController extends Controller
         // Calculate totals for the header (only for current user's full collection if no filters, or filtered?)
         // Usually totals are nice to see for the current view, but the request was "Collection Value" which implies everything.
         // Let's pass global totals as well.
-        $totalCost = Game::where('user_id', $request->user()->id)->sum('price');
-        $totalValue = Game::where('user_id', $request->user()->id)->sum('current_price');
+        $totalCost = Game::where('user_id', $request->user()->id)
+            ->where('purchased', true)
+            ->sum('price');
+        $totalValue = Game::where('user_id', $request->user()->id)
+            ->where('purchased', true)
+            ->sum('current_price');
 
         // Calculate counts for sidebar
         $userId = $request->user()->id;
         $statusCounts = Game::where('user_id', $userId)
+            ->where('purchased', true)
             ->selectRaw('status, count(*) as count')
             ->groupBy('status')
             ->pluck('count', 'status')
             ->toArray();
+            
+        $wishlistCount = Game::where('user_id', $userId)
+            ->where('purchased', false)
+            ->count();
 
         $counts = [
-            'all' => Game::where('user_id', $userId)->count(),
+            'all' => Game::where('user_id', $userId)->where('purchased', true)->count(),
+            'wishlist' => $wishlistCount,
             'uncategorized' => $statusCounts['uncategorized'] ?? 0,
             'currently_playing' => $statusCounts['currently_playing'] ?? 0,
             'completed' => $statusCounts['completed'] ?? 0,
@@ -88,7 +104,7 @@ class GameController extends Controller
 
         return Inertia::render('Games/Index', [
             'games' => $games,
-            'filters' => $request->only(['search', 'platform_id', 'status', 'order_by', 'direction', 'per_page']),
+            'filters' => $request->only(['search', 'platform_id', 'status', 'order_by', 'direction', 'per_page', 'purchased']),
             'platforms' => Platform::all(),
             'totalCost' => $totalCost,
             'totalValue' => $totalValue,

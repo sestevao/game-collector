@@ -45,6 +45,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Game Lookup
     Route::get('/games/lookup', [GameLookupController::class, 'search'])->name('games.lookup');
+    Route::post('/games/lookup/ocr', [GameLookupController::class, 'processOcr'])->name('games.lookup-ocr');
     Route::get('/games/lookup-prices', [GameLookupController::class, 'searchPrices'])->name('games.lookup-prices');
     Route::get('/games/lookup/{id}', [GameLookupController::class, 'details'])->name('games.lookup-details');
 

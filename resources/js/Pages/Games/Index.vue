@@ -21,6 +21,10 @@ const props = defineProps({
     totalValue: [Number, String], // From controller now
 });
 
+const valueLabel = computed(() => {
+    return purchasedFilter.value === 'false' ? 'Wishlist Value' : 'Collection Value';
+});
+
 const isSteamLinked = computed(() => {
     return props.auth.user.linked_accounts?.some(acc => acc.provider_name === 'steam');
 });
@@ -31,6 +35,7 @@ const statusFilter = ref(props.filters.status || 'all');
 const orderBy = ref(props.filters.order_by || 'created_at');
 const orderDirection = ref(props.filters.direction || 'desc');
 const perPage = ref(props.filters.per_page || 24);
+const purchasedFilter = ref(props.filters.purchased === undefined ? 'true' : props.filters.purchased);
 
 const form = useForm({
     title: '',
@@ -131,6 +136,7 @@ const selectLookupResult = (game) => {
 const startAddingGame = () => {
     editingGame.value = null;
     form.reset();
+    form.purchased = purchasedFilter.value === 'true';
     form.clearErrors();
     imageInputType.value = 'url';
     imagePreview.value = null;
@@ -274,8 +280,14 @@ const handleSearch = () => {
         status: statusFilter.value,
         order_by: orderBy.value,
         direction: orderDirection.value,
-        per_page: perPage.value
+        per_page: perPage.value,
+        purchased: purchasedFilter.value
     }, { preserveState: true, preserveScroll: true });
+};
+
+const setPurchased = (value) => {
+    purchasedFilter.value = value;
+    handleSearch();
 };
 
 const setStatus = (status) => {
@@ -451,69 +463,104 @@ const importSteam = () => {
                     <div class="md:hidden mb-4">
                         <button 
                             @click="showMobileFilters = !showMobileFilters" 
-                            class="w-full flex justify-between items-center px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                            class="w-full flex justify-between items-center px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm text-sm font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                         >
-                            <span>{{ showMobileFilters ? 'Hide Filters' : 'Show Filters' }}</span>
-                            <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <span>{{ showMobileFilters ? 'Hide Filters' : 'Filters' }}</span>
+                            <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd" />
                             </svg>
                         </button>
                     </div>
 
-                     <div :class="{'hidden': !showMobileFilters, 'block': showMobileFilters, 'md:block': true}" class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg p-4 sticky top-4">
-                        <div class="space-y-1">
-                            <button @click="setStatus('all')" :class="{'font-bold text-indigo-500': statusFilter === 'all'}" class="w-full text-left flex justify-between px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
-                                <span>All games</span>
-                                <span class="text-gray-500 text-sm">{{ counts?.all || 0 }}</span>
-                            </button>
-                            <button @click="setStatus('uncategorized')" :class="{'font-bold text-indigo-500': statusFilter === 'uncategorized'}" class="w-full text-left flex justify-between px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
-                                <span>Uncategorized</span>
-                                <span class="text-gray-500 text-sm">{{ counts?.uncategorized || 0 }}</span>
-                            </button>
-                            <button @click="setStatus('currently_playing')" :class="{'font-bold text-indigo-500': statusFilter === 'currently_playing'}" class="w-full text-left flex justify-between px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
-                                <span>Currently playing</span>
-                                <span class="text-gray-500 text-sm" v-if="counts?.currently_playing">{{ counts.currently_playing }}</span>
-                            </button>
-                            <button @click="setStatus('completed')" :class="{'font-bold text-indigo-500': statusFilter === 'completed'}" class="w-full text-left flex justify-between px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
-                                <span>Completed</span>
-                                <span class="text-gray-500 text-sm" v-if="counts?.completed">{{ counts.completed }}</span>
-                            </button>
-                            <button @click="setStatus('played')" :class="{'font-bold text-indigo-500': statusFilter === 'played'}" class="w-full text-left flex justify-between px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
-                                <span>Played</span>
-                                <span class="text-gray-500 text-sm" v-if="counts?.played">{{ counts.played }}</span>
-                            </button>
-                            <button @click="setStatus('not_played')" :class="{'font-bold text-indigo-500': statusFilter === 'not_played'}" class="w-full text-left flex justify-between px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
-                                <span>Not played</span>
-                                <span class="text-gray-500 text-sm" v-if="counts?.not_played">{{ counts.not_played }}</span>
-                            </button>
+                     <div :class="{'hidden': !showMobileFilters, 'block': showMobileFilters, 'md:block': true}" class="space-y-6 md:sticky md:top-24 transition-all duration-300">
+                        <!-- Collection / Wishlist Filter -->
+                        <div class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-5 border border-gray-100 dark:border-gray-700">
+                            <h3 class="text-xs font-black text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                </svg>
+                                Library
+                            </h3>
+                            <div class="space-y-1">
+                                <button @click="setPurchased('true')" :class="{'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-200 dark:ring-indigo-800': purchasedFilter === 'true', 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50': purchasedFilter !== 'true'}" class="w-full text-left flex justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all">
+                                    <span>My Collection</span>
+                                    <span :class="{'bg-indigo-200 dark:bg-indigo-800 text-indigo-800 dark:text-indigo-200': purchasedFilter === 'true', 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400': purchasedFilter !== 'true'}" class="px-2 py-0.5 rounded-md text-xs font-bold transition-colors">{{ counts?.all || 0 }}</span>
+                                </button>
+                                <button @click="setPurchased('false')" :class="{'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 ring-1 ring-purple-200 dark:ring-purple-800': purchasedFilter === 'false', 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50': purchasedFilter !== 'false'}" class="w-full text-left flex justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all">
+                                    <span>Wishlist</span>
+                                    <span :class="{'bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-200': purchasedFilter === 'false', 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400': purchasedFilter !== 'false'}" class="px-2 py-0.5 rounded-md text-xs font-bold transition-colors">{{ counts?.wishlist || 0 }}</span>
+                                </button>
+                            </div>
                         </div>
 
-                        <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Order By</p>
+                        <!-- Status Filter -->
+                        <div class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-5 border border-gray-100 dark:border-gray-700">
+                            <h3 class="text-xs font-black text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Status
+                            </h3>
                             <div class="space-y-1">
-                                <button @click="setSort('title')" class="w-full text-left flex items-center gap-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
-                                    <span :class="{'font-bold text-indigo-500': orderBy === 'title'}">Name</span>
-                                    <span v-if="orderBy === 'title'" class="text-xs">{{ orderDirection === 'asc' ? '↑' : '↓' }}</span>
+                                <button @click="setStatus('all')" :class="{'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-200 dark:ring-indigo-800': statusFilter === 'all', 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50': statusFilter !== 'all'}" class="w-full text-left flex justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all">
+                                    <span>All Games</span>
+                                    <span :class="{'bg-indigo-200 dark:bg-indigo-800 text-indigo-800 dark:text-indigo-200': statusFilter === 'all', 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400': statusFilter !== 'all'}" class="px-2 py-0.5 rounded-md text-xs font-bold transition-colors">{{ counts?.all || 0 }}</span>
                                 </button>
-                                <button @click="setSort('released_at')" class="w-full text-left flex items-center gap-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
-                                    <span :class="{'font-bold text-indigo-500': orderBy === 'released_at'}">Release date</span>
-                                    <span v-if="orderBy === 'released_at'" class="text-xs">{{ orderDirection === 'asc' ? '↑' : '↓' }}</span>
+                                <button @click="setStatus('uncategorized')" :class="{'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-200 dark:ring-indigo-800': statusFilter === 'uncategorized', 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50': statusFilter !== 'uncategorized'}" class="w-full text-left flex justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all">
+                                    <span>Uncategorized</span>
+                                    <span :class="{'bg-indigo-200 dark:bg-indigo-800 text-indigo-800 dark:text-indigo-200': statusFilter === 'uncategorized', 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400': statusFilter !== 'uncategorized'}" class="px-2 py-0.5 rounded-md text-xs font-bold transition-colors">{{ counts?.uncategorized || 0 }}</span>
                                 </button>
-                                <button @click="setSort('created_at')" class="w-full text-left flex items-center gap-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
-                                    <span :class="{'font-bold text-indigo-500': orderBy === 'created_at'}">Date Added</span>
-                                    <span v-if="orderBy === 'created_at'" class="text-xs">{{ orderDirection === 'asc' ? '↑' : '↓' }}</span>
+                                <button @click="setStatus('currently_playing')" :class="{'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-200 dark:ring-indigo-800': statusFilter === 'currently_playing', 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50': statusFilter !== 'currently_playing'}" class="w-full text-left flex justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all">
+                                    <span>Currently Playing</span>
+                                    <span :class="{'bg-indigo-200 dark:bg-indigo-800 text-indigo-800 dark:text-indigo-200': statusFilter === 'currently_playing', 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400': statusFilter !== 'currently_playing'}" class="px-2 py-0.5 rounded-md text-xs font-bold transition-colors" v-if="counts?.currently_playing">{{ counts.currently_playing }}</span>
                                 </button>
-                                <button @click="setSort('metascore')" class="w-full text-left flex items-center gap-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
-                                    <span :class="{'font-bold text-indigo-500': orderBy === 'metascore'}">Metascore</span>
-                                    <span v-if="orderBy === 'metascore'" class="text-xs">{{ orderDirection === 'asc' ? '↑' : '↓' }}</span>
+                                <button @click="setStatus('completed')" :class="{'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-200 dark:ring-indigo-800': statusFilter === 'completed', 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50': statusFilter !== 'completed'}" class="w-full text-left flex justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all">
+                                    <span>Completed</span>
+                                    <span :class="{'bg-indigo-200 dark:bg-indigo-800 text-indigo-800 dark:text-indigo-200': statusFilter === 'completed', 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400': statusFilter !== 'completed'}" class="px-2 py-0.5 rounded-md text-xs font-bold transition-colors" v-if="counts?.completed">{{ counts.completed }}</span>
                                 </button>
-                                <button @click="setSort('current_price')" class="w-full text-left flex items-center gap-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
-                                    <span :class="{'font-bold text-indigo-500': orderBy === 'current_price'}">Value</span>
-                                    <span v-if="orderBy === 'current_price'" class="text-xs">{{ orderDirection === 'asc' ? '↑' : '↓' }}</span>
+                                <button @click="setStatus('played')" :class="{'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-200 dark:ring-indigo-800': statusFilter === 'played', 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50': statusFilter !== 'played'}" class="w-full text-left flex justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all">
+                                    <span>Played</span>
+                                    <span :class="{'bg-indigo-200 dark:bg-indigo-800 text-indigo-800 dark:text-indigo-200': statusFilter === 'played', 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400': statusFilter !== 'played'}" class="px-2 py-0.5 rounded-md text-xs font-bold transition-colors" v-if="counts?.played">{{ counts.played }}</span>
                                 </button>
-                                <button @click="setSort('platform')" class="w-full text-left flex items-center gap-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
-                                    <span :class="{'font-bold text-indigo-500': orderBy === 'platform'}">Platform</span>
-                                    <span v-if="orderBy === 'platform'" class="text-xs">{{ orderDirection === 'asc' ? '↑' : '↓' }}</span>
+                                <button @click="setStatus('not_played')" :class="{'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 ring-1 ring-indigo-200 dark:ring-indigo-800': statusFilter === 'not_played', 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50': statusFilter !== 'not_played'}" class="w-full text-left flex justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all">
+                                    <span>Not Played</span>
+                                    <span :class="{'bg-indigo-200 dark:bg-indigo-800 text-indigo-800 dark:text-indigo-200': statusFilter === 'not_played', 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400': statusFilter !== 'not_played'}" class="px-2 py-0.5 rounded-md text-xs font-bold transition-colors" v-if="counts?.not_played">{{ counts.not_played }}</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Sort Filter -->
+                        <div class="bg-white dark:bg-gray-800 shadow-sm rounded-2xl p-5 border border-gray-100 dark:border-gray-700">
+                            <h3 class="text-xs font-black text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                                </svg>
+                                Sort By
+                            </h3>
+                            <div class="space-y-1">
+                                <button @click="setSort('title')" class="w-full text-left flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg text-sm transition-colors" :class="{'text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-900/10 ring-1 ring-indigo-200 dark:ring-indigo-800': orderBy === 'title', 'text-gray-600 dark:text-gray-400': orderBy !== 'title'}">
+                                    <span>Name</span>
+                                    <span v-if="orderBy === 'title'" class="text-[10px] font-bold bg-indigo-100 dark:bg-indigo-900/50 px-1.5 py-0.5 rounded text-indigo-700 dark:text-indigo-300">{{ orderDirection === 'asc' ? 'A-Z' : 'Z-A' }}</span>
+                                </button>
+                                <button @click="setSort('released_at')" class="w-full text-left flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg text-sm transition-colors" :class="{'text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-900/10 ring-1 ring-indigo-200 dark:ring-indigo-800': orderBy === 'released_at', 'text-gray-600 dark:text-gray-400': orderBy !== 'released_at'}">
+                                    <span>Release Date</span>
+                                    <span v-if="orderBy === 'released_at'" class="text-[10px] font-bold bg-indigo-100 dark:bg-indigo-900/50 px-1.5 py-0.5 rounded text-indigo-700 dark:text-indigo-300">{{ orderDirection === 'asc' ? 'Oldest' : 'Newest' }}</span>
+                                </button>
+                                <button @click="setSort('created_at')" class="w-full text-left flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg text-sm transition-colors" :class="{'text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-900/10 ring-1 ring-indigo-200 dark:ring-indigo-800': orderBy === 'created_at', 'text-gray-600 dark:text-gray-400': orderBy !== 'created_at'}">
+                                    <span>Date Added</span>
+                                    <span v-if="orderBy === 'created_at'" class="text-[10px] font-bold bg-indigo-100 dark:bg-indigo-900/50 px-1.5 py-0.5 rounded text-indigo-700 dark:text-indigo-300">{{ orderDirection === 'asc' ? 'Oldest' : 'Newest' }}</span>
+                                </button>
+                                <button @click="setSort('metascore')" class="w-full text-left flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg text-sm transition-colors" :class="{'text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-900/10 ring-1 ring-indigo-200 dark:ring-indigo-800': orderBy === 'metascore', 'text-gray-600 dark:text-gray-400': orderBy !== 'metascore'}">
+                                    <span>Metascore</span>
+                                    <span v-if="orderBy === 'metascore'" class="text-[10px] font-bold bg-indigo-100 dark:bg-indigo-900/50 px-1.5 py-0.5 rounded text-indigo-700 dark:text-indigo-300">{{ orderDirection === 'asc' ? 'Low-High' : 'High-Low' }}</span>
+                                </button>
+                                <button @click="setSort('current_price')" class="w-full text-left flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg text-sm transition-colors" :class="{'text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-900/10 ring-1 ring-indigo-200 dark:ring-indigo-800': orderBy === 'current_price', 'text-gray-600 dark:text-gray-400': orderBy !== 'current_price'}">
+                                    <span>Value</span>
+                                    <span v-if="orderBy === 'current_price'" class="text-[10px] font-bold bg-indigo-100 dark:bg-indigo-900/50 px-1.5 py-0.5 rounded text-indigo-700 dark:text-indigo-300">{{ orderDirection === 'asc' ? 'Low-High' : 'High-Low' }}</span>
+                                </button>
+                                <button @click="setSort('platform')" class="w-full text-left flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg text-sm transition-colors" :class="{'text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-900/10 ring-1 ring-indigo-200 dark:ring-indigo-800': orderBy === 'platform', 'text-gray-600 dark:text-gray-400': orderBy !== 'platform'}">
+                                    <span>Platform</span>
+                                    <span v-if="orderBy === 'platform'" class="text-[10px] font-bold bg-indigo-100 dark:bg-indigo-900/50 px-1.5 py-0.5 rounded text-indigo-700 dark:text-indigo-300">{{ orderDirection === 'asc' ? 'A-Z' : 'Z-A' }}</span>
                                 </button>
                             </div>
                         </div>
@@ -523,60 +570,50 @@ const importSteam = () => {
                 <!-- Main Content -->
                 <div class="flex-1">
                     <!-- Stats / Filters -->
-                    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg mb-6 p-6">
-                        <div class="flex flex-col md:flex-row gap-4 justify-between items-center">
-                            <div class="flex gap-6 text-gray-900 dark:text-gray-100">
+                    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-2xl mb-6 p-5 border border-gray-100 dark:border-gray-700">
+                        <div class="flex flex-col xl:flex-row gap-4 justify-between items-center">
+                            <div class="flex gap-6 text-gray-900 dark:text-gray-100 w-full xl:w-auto justify-between xl:justify-start">
                                 <div>
-                                    <span class="text-sm font-bold block text-gray-500">Collection Value</span>
-                                    <span class="text-2xl text-indigo-600 dark:text-indigo-400 font-bold">{{ formatCurrency(totalValue) }}</span>
+                                    <span class="text-xs font-bold block text-gray-400 uppercase tracking-wider mb-1">{{ valueLabel }}</span>
+                                    <span class="text-3xl text-indigo-600 dark:text-indigo-400 font-black tracking-tight">{{ formatCurrency(totalValue) }}</span>
                                 </div>
                             </div>
                             
-                            <div class="flex flex-wrap gap-2 w-full md:w-auto items-center justify-center md:justify-end">
+                            <div class="flex flex-wrap gap-3 w-full xl:w-auto items-center justify-start xl:justify-end">
                                 <!-- Statistics Link -->
-                                <Link :href="route('games.statistics')" class="bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 p-2 rounded-lg transition-colors" title="Statistics">
+                                <Link :href="route('games.statistics')" class="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 p-2.5 rounded-xl transition-colors" title="Statistics">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" />
                                     </svg>
                                 </Link>
 
                                 <!-- View Toggle -->
-                                <div class="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
-                                    <button @click="viewMode = 'gallery'" :class="{'bg-white dark:bg-gray-600 shadow text-indigo-600 dark:text-indigo-400': viewMode === 'gallery', 'text-gray-500 dark:text-gray-400': viewMode !== 'gallery'}" class="p-1.5 rounded-md transition-colors" title="Gallery View">
+                                <div class="flex bg-gray-100 dark:bg-gray-700/50 rounded-xl p-1">
+                                    <button @click="viewMode = 'gallery'" :class="{'bg-white dark:bg-gray-600 shadow-sm text-indigo-600 dark:text-indigo-400': viewMode === 'gallery', 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200': viewMode !== 'gallery'}" class="p-2 rounded-lg transition-all duration-200" title="Gallery View">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
                                         </svg>
                                     </button>
-                                    <button @click="viewMode = 'list'" :class="{'bg-white dark:bg-gray-600 shadow text-indigo-600 dark:text-indigo-400': viewMode === 'list', 'text-gray-500 dark:text-gray-400': viewMode !== 'list'}" class="p-1.5 rounded-md transition-colors" title="List View">
+                                    <button @click="viewMode = 'list'" :class="{'bg-white dark:bg-gray-600 shadow-sm text-indigo-600 dark:text-indigo-400': viewMode === 'list', 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200': viewMode !== 'list'}" class="p-2 rounded-lg transition-all duration-200" title="List View">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                                         </svg>
                                     </button>
                                 </div>
 
-                                <select 
-                                    v-model="perPage"
-                                    @change="handleSearch"
-                                    class="border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm"
-                                    title="Items per page"
-                                >
-                                    <option :value="24">24</option>
-                                    <option :value="48">48</option>
-                                    <option :value="96">96</option>
-                                    <option value="all">All</option>
-                                </select>
+                                <div class="h-8 w-px bg-gray-200 dark:bg-gray-700 mx-1 hidden xl:block"></div>
 
                                 <TextInput 
                                     v-model="search" 
-                                    placeholder="Search games..." 
-                                    class="w-full md:w-64"
+                                    placeholder="Search collection..." 
+                                    class="w-full sm:w-64"
                                     @keyup.enter="handleSearch"
                                 />
                                 
                                 <select 
                                     v-model="platform_id"
                                     @change="handleSearch"
-                                    class="border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm w-full md:w-auto"
+                                    class="border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm w-full sm:w-auto cursor-pointer"
                                 >
                                     <option value="">All Platforms</option>
                                     <template v-for="(platforms, groupName) in groupedPlatforms" :key="groupName">
@@ -587,187 +624,243 @@ const importSteam = () => {
                                         </optgroup>
                                     </template>
                                 </select>
+
+                                <select 
+                                    v-model="perPage"
+                                    @change="handleSearch"
+                                    class="border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm cursor-pointer"
+                                    title="Items per page"
+                                >
+                                    <option :value="24">24</option>
+                                    <option :value="48">48</option>
+                                    <option :value="96">96</option>
+                                    <option value="all">All</option>
+                                </select>
                             </div>
                         </div>
                     </div>
 
-                <!-- Game List -->
-                    <div v-if="viewMode === 'gallery'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div v-for="game in (games.data || games)" :key="game.id" class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg relative group">
-                            <!-- Game Image Header -->
-                            <div class="h-48 overflow-hidden relative">
-                                <img 
-                                    :src="game.image_url || 'https://placehold.co/600x400?text=No+Image'" 
-                                    class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                    alt="Game Cover"
-                                />
-                                <div class="absolute top-2 right-2 bg-black/70 text-white p-1.5 rounded-lg shadow-sm backdrop-blur-sm" :title="game.platform?.name">
-                                    <PlatformIcon :platform="game.platform" className="w-5 h-5" />
-                                </div>
-                                <div v-if="game.metascore" class="absolute top-2 left-2 bg-green-600 text-white text-xs font-bold px-2 py-1 rounded border border-green-500">
-                                    {{ game.metascore }}
-                                </div>
-                            </div>
+                    <!-- Empty State -->
+                    <div v-if="(games.data || games).length === 0" class="flex flex-col items-center justify-center py-20 text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-3xl border-2 border-dashed border-gray-200 dark:border-gray-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-4 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-1">No games found</h3>
+                        <p class="mb-6">Get started by adding games to your collection.</p>
+                        <PrimaryButton @click="startAddingGame">Add Your First Game</PrimaryButton>
+                    </div>
 
-                            <div class="p-4">
-                                <div class="flex justify-between items-start mb-2">
-                                    <h3 class="text-lg font-bold text-gray-900 dark:text-gray-100 leading-tight line-clamp-2">{{ game.title }}</h3>
-                                </div>
-                                
-                                <div class="mb-3 platforms platforms_medium flex items-center">
-                                    <!-- <PlatformIcon v-if="game.platform" :platform="game.platform" className="w-5 h-5 text-gray-500 dark:text-gray-400" :title="game.platform.name" /> -->
-                                    <span v-if="game.platform" class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
-                                        <PlatformIcon :platform="game.platform" className="w-3 h-3" />
-                                        {{ game.platform.name }}
-                                    </span>
-                                </div>
-                                
-                                <div class="text-sm text-gray-600 dark:text-gray-400 mb-4 space-y-1">
-                                    <div v-if="game.released_at" class="flex justify-between">
-                                        <span>Release date:</span>
-                                        <span class="text-gray-800 dark:text-gray-200">{{ new Date(game.released_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }}</span>
-                                    </div>
-                                    <div v-if="game.genres" class="flex justify-between">
-                                        <span>Genres:</span>
-                                        <span class="text-gray-800 dark:text-gray-200 truncate ml-2 max-w-[150px]">{{ game.genres }}</span>
-                                    </div>
-                                    <div v-if="game.chart_ranking" class="flex justify-between">
-                                        <span>Chart:</span>
-                                        <span class="text-gray-800 dark:text-gray-200">{{ game.chart_ranking }}</span>
-                                    </div>
-                                </div>
-
-                                <div class="border-t border-gray-200 dark:border-gray-700 pt-3 flex justify-between items-end">
-                                    <div>
-                                        <div class="text-xs text-gray-500 uppercase">Value</div>
-                                        <div class="text-lg font-bold text-indigo-600 dark:text-indigo-400">
-                                            {{ game.current_price ? formatCurrency(game.current_price) : '--' }}
-                                        </div>
-                                        <div class="flex items-center gap-1">
-                                            <div v-if="game.price_source" class="text-[10px] text-gray-400 truncate max-w-[100px]" :title="game.price_source">
-                                                {{ game.price_source }}
-                                            </div>
-                                            <!-- Market Prices Tooltip -->
-                                            <div v-if="game.market_prices && game.market_prices.length > 1" class="relative group/prices">
-                                                <span class="cursor-help text-[10px] text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-1 rounded hover:bg-indigo-100">
-                                                    +{{ game.market_prices.length - 1 }} more
-                                                </span>
-                                                <div class="absolute bottom-full left-0 mb-1 hidden group-hover/prices:block min-w-[180px] bg-white dark:bg-gray-800 p-2 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-50 text-xs">
-                                                     <div class="font-bold mb-1 text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 pb-1">Price Comparison</div>
-                                                     <div v-for="(mp, idx) in game.market_prices" :key="idx" class="flex justify-between items-center py-1.5 border-b border-gray-100 dark:border-gray-700 last:border-0 last:pb-0">
-                                                        <span class="text-gray-600 dark:text-gray-400 truncate pr-2 max-w-[100px]" :title="mp.source">{{ mp.source }}</span>
-                                                        <span class="font-bold text-gray-900 dark:text-gray-200">{{ formatCurrency(mp.price) }}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
+                    <!-- Content -->
+                    <div v-else>
+                        <!-- Gallery View -->
+                        <div v-if="viewMode === 'gallery'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                            <div v-for="game in (games.data || games)" :key="game.id" class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative group border border-gray-100 dark:border-gray-700 flex flex-col overflow-hidden">
+                                <!-- Game Image Header -->
+                                <div class="aspect-[16/9] overflow-hidden relative bg-gray-100 dark:bg-gray-900">
+                                    <img 
+                                        :src="game.image_url || 'https://placehold.co/600x400?text=No+Image'" 
+                                        class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                        alt="Game Cover"
+                                    />
+                                    <!-- Gradient Overlay -->
+                                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                    
+                                    <!-- Top Badges -->
+                                    <div class="absolute top-3 left-3 flex gap-2 z-10">
+                                        <div v-if="game.metascore" 
+                                            class="text-[10px] font-black px-1.5 py-0.5 rounded shadow-sm backdrop-blur-md border border-white/10"
+                                            :class="{
+                                                'bg-green-500/90 text-white': game.metascore >= 75,
+                                                'bg-yellow-500/90 text-white': game.metascore >= 50 && game.metascore < 75,
+                                                'bg-red-500/90 text-white': game.metascore < 50
+                                            }"
+                                        >
+                                            {{ game.metascore }}
                                         </div>
                                     </div>
-                                    <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button @click="refreshMetadata(game)" class="text-gray-400 hover:text-green-500" title="Refresh Metadata">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3 3m0 0l-3-3m3 3V8" />
-                            </svg>
-                        </button>
-                        <button @click="refreshPrice(game)" class="text-gray-400 hover:text-indigo-500" title="Update Price">
+
+                                    <div class="absolute top-3 right-3 bg-white/90 dark:bg-black/60 backdrop-blur-md px-2 py-1.5 rounded-lg shadow-sm border border-white/10 z-10 flex items-center gap-1.5" :title="game.platform?.name">
+                                        <PlatformIcon :platform="game.platform" className="w-4 h-4" />
+                                        <span class="text-[10px] font-bold uppercase tracking-wide text-gray-800 dark:text-gray-200">{{ game.platform?.name }}</span>
+                                    </div>
+
+                                    <!-- Quick Actions (Centered on Hover) -->
+                                    <div class="absolute inset-0 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
+                                        <button @click.stop="refreshMetadata(game)" class="bg-white text-gray-800 hover:bg-indigo-600 hover:text-white p-2.5 rounded-full shadow-lg transition-all transform hover:scale-110" title="Refresh Metadata">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                             </svg>
                                         </button>
-                                        <button @click="editGame(game)" class="text-gray-400 hover:text-blue-500" title="Edit">
+                                        <button @click.stop="editGame(game)" class="bg-white text-gray-800 hover:bg-indigo-600 hover:text-white p-2.5 rounded-full shadow-lg transition-all transform hover:scale-110" title="Edit Game">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                             </svg>
                                         </button>
-                                        <button @click="deleteGame(game)" class="text-gray-400 hover:text-red-500" title="Delete">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                        </button>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
 
-                        <div v-if="(games.data || games).length === 0" class="col-span-full text-center py-12 text-gray-500 dark:text-gray-400">
-                            No games found. Start adding some!
-                        </div>
-                    </div>
-
-                    <!-- List View -->
-                    <div v-else class="flex flex-col gap-4">
-                        <div v-for="game in (games.data || games)" :key="game.id" class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg flex overflow-hidden group">
-                            <!-- Small Image -->
-                            <div class="w-32 h-24 flex-shrink-0 relative bg-gray-200 dark:bg-gray-900">
-                                <img 
-                                    :src="game.image_url || 'https://placehold.co/600x400?text=No+Image'" 
-                                    class="w-full h-full object-cover" 
-                                    alt="Game Cover"
-                                />
-                                <div v-if="game.metascore" class="absolute top-1 left-1 bg-green-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded border border-green-500">
-                                    {{ game.metascore }}
-                                </div>
-                            </div>
-                            
-                            <!-- Content -->
-                            <div class="flex-1 p-3 flex flex-col justify-between">
-                                <div class="flex justify-between">
-                                    <div>
-                                        <h3 class="font-bold text-gray-900 dark:text-gray-100 line-clamp-1">{{ game.title }}</h3>
-                                        <div class="text-xs text-gray-500 flex items-center gap-2">
-                                            <div class="platforms platforms_medium flex items-center">
-                                                <PlatformIcon v-if="game.platform" :platform="game.platform" className="w-5 h-5 text-gray-500 dark:text-gray-400" :title="game.platform.name" />
-                                                <span v-else class="text-gray-400 text-xs">Unknown Platform</span>
-                                            </div>
-                                            <span v-if="game.released_at">• {{ new Date(game.released_at).getFullYear() }}</span>
-                                            <span v-if="game.status && game.status !== 'uncategorized'" class="capitalize px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-[10px]">{{ game.status.replace('_', ' ') }}</span>
+                                <div class="p-4 flex-1 flex flex-col">
+                                    <div class="mb-3">
+                                        <div class="flex justify-between items-start gap-2 mb-1">
+                                            <h3 class="text-base font-bold text-gray-900 dark:text-white leading-tight line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" :title="game.title">{{ game.title }}</h3>
+                                        </div>
+                                        
+                                        <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 flex-wrap mt-2">
+                                            <span v-if="game.platform" class="flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded font-bold border border-indigo-100 dark:border-indigo-800/30">
+                                                <PlatformIcon :platform="game.platform" className="w-3 h-3" />
+                                                {{ game.platform.name }}
+                                            </span>
+                                            <span v-if="game.released_at" class="bg-gray-100 dark:bg-gray-700/50 px-1.5 py-0.5 rounded">{{ new Date(game.released_at).getFullYear() }}</span>
+                                            <span v-if="game.genres" class="truncate max-w-[150px] bg-gray-100 dark:bg-gray-700/50 px-1.5 py-0.5 rounded">{{ game.genres.split(',')[0] }}</span>
                                         </div>
                                     </div>
-                                    <div class="text-right">
-                                        <div class="font-bold text-indigo-600 dark:text-indigo-400">{{ game.current_price ? formatCurrency(game.current_price) : '--' }}</div>
-                                        <div class="flex items-center justify-end gap-1">
-                                            <div v-if="game.price_source" class="text-[10px] text-gray-400" :title="game.price_source">
-                                                {{ game.price_source }}
-                                            </div>
+
+                                    <div class="mt-auto pt-3 border-t border-gray-50 dark:border-gray-700/50 flex justify-between items-center">
+                                        <!-- Status Badge -->
+                                        <span 
+                                            class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border"
+                                            :class="{
+                                                'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800': game.status === 'completed',
+                                                'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800': game.status === 'currently_playing',
+                                                'bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600': game.status === 'uncategorized' || !game.status,
+                                                'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800': game.status === 'played',
+                                                'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800': game.status === 'not_played'
+                                            }"
+                                        >
+                                            {{ (game.status || 'Uncategorized').replace('_', ' ') }}
+                                        </span>
+
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-sm font-black text-indigo-600 dark:text-indigo-400">
+                                                {{ game.current_price ? formatCurrency(game.current_price) : '--' }}
+                                            </span>
+                                            
                                             <!-- Market Prices Tooltip -->
-                                            <div v-if="game.market_prices && game.market_prices.length > 1" class="relative group/prices text-left">
-                                                <span class="cursor-help text-[10px] text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-1 rounded hover:bg-indigo-100">
+                                            <div v-if="game.market_prices && game.market_prices.length > 1" class="relative group/prices">
+                                                <span class="cursor-help flex items-center justify-center w-5 h-5 rounded-full bg-indigo-50 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-300 text-[10px] font-bold border border-indigo-100 dark:border-indigo-800">
                                                     +{{ game.market_prices.length - 1 }}
                                                 </span>
-                                                <div class="absolute bottom-full right-0 mb-1 hidden group-hover/prices:block min-w-[180px] bg-white dark:bg-gray-800 p-2 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-50 text-xs">
-                                                     <div class="font-bold mb-1 text-gray-700 dark:text-gray-300 border-b dark:border-gray-600 pb-1">Price Comparison</div>
-                                                     <div v-for="(mp, idx) in game.market_prices" :key="idx" class="flex justify-between items-center py-1.5 border-b border-gray-100 dark:border-gray-700 last:border-0 last:pb-0">
-                                                        <span class="text-gray-600 dark:text-gray-400 truncate pr-2 max-w-[100px]" :title="mp.source">{{ mp.source }}</span>
-                                                        <span class="font-bold text-gray-900 dark:text-gray-200">{{ formatCurrency(mp.price) }}</span>
-                                                    </div>
+                                                <div class="absolute bottom-full right-0 mb-2 hidden group-hover/prices:block min-w-[200px] bg-white dark:bg-gray-800 p-3 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 z-50">
+                                                     <div class="text-xs font-bold mb-2 text-gray-400 uppercase tracking-wider">Price Comparison</div>
+                                                     <div class="space-y-1.5">
+                                                         <div v-for="(mp, idx) in game.market_prices" :key="idx" class="flex justify-between items-center text-xs">
+                                                            <span class="text-gray-600 dark:text-gray-300 truncate pr-2" :title="mp.source">{{ mp.source }}</span>
+                                                            <span class="font-bold text-gray-900 dark:text-white">{{ formatCurrency(mp.price) }}</span>
+                                                        </div>
+                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                                
-                                <div class="flex justify-between items-end mt-2">
-                                    <div class="text-xs text-gray-500 truncate max-w-[200px] md:max-w-md">
-                                        {{ game.genres }}
+                            </div>
+                        </div>
+
+                        <!-- List View -->
+                        <div v-else class="flex flex-col gap-3">
+                            <div v-for="game in (games.data || games)" :key="game.id" class="bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-all duration-200 sm:rounded-xl flex overflow-hidden group border border-gray-100 dark:border-gray-700 h-28">
+                                <!-- Small Image -->
+                                <div class="w-24 sm:w-32 h-full flex-shrink-0 relative bg-gray-200 dark:bg-gray-900 overflow-hidden">
+                                    <img 
+                                        :src="game.image_url || 'https://placehold.co/600x400?text=No+Image'" 
+                                        class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                                        alt="Game Cover"
+                                    />
+                                    <div v-if="game.metascore" 
+                                        class="absolute top-1 left-1 text-[10px] font-black px-1.5 py-0.5 rounded shadow-sm backdrop-blur-md"
+                                        :class="{
+                                            'bg-green-500/90 text-white': game.metascore >= 75,
+                                            'bg-yellow-500/90 text-white': game.metascore >= 50 && game.metascore < 75,
+                                            'bg-red-500/90 text-white': game.metascore < 50
+                                        }"
+                                    >
+                                        {{ game.metascore }}
                                     </div>
+                                </div>
+                                
+                                <!-- Content -->
+                                <div class="flex-1 p-3 sm:p-4 flex items-center justify-between gap-4">
+                                    <!-- Main Info -->
+                                    <div class="min-w-0 flex-1 flex flex-col justify-center h-full">
+                                        <div class="flex items-center gap-2 mb-1.5">
+                                            <h3 class="font-bold text-gray-900 dark:text-gray-100 line-clamp-1 text-base sm:text-lg group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{{ game.title }}</h3>
+                                            <span v-if="game.released_at" class="hidden sm:inline-block text-xs font-bold text-gray-500 bg-gray-100 dark:bg-gray-700/50 px-2 py-0.5 rounded-full border border-gray-200 dark:border-gray-600">{{ new Date(game.released_at).getFullYear() }}</span>
+                                        </div>
+                                        
+                                        <div class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                                            <div class="flex items-center gap-1.5" title="Platform">
+                                                <PlatformIcon v-if="game.platform" :platform="game.platform" className="w-4 h-4" />
+                                                <span v-else class="text-gray-400">Unknown</span>
+                                                <span class="font-medium text-xs sm:text-sm truncate max-w-[80px] sm:max-w-none" v-if="game.platform">{{ game.platform.name }}</span>
+                                            </div>
+                                            <span class="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></span>
+                                            <span class="truncate max-w-[150px]">{{ game.genres ? game.genres.split(',')[0] : 'No Genre' }}</span>
+                                            <span v-if="game.released_at" class="sm:hidden w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></span>
+                                            <span v-if="game.released_at" class="sm:hidden">{{ new Date(game.released_at).getFullYear() }}</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Status & Price -->
+                                    <div class="flex items-center gap-4 sm:gap-8 flex-shrink-0">
+                                        <div class="hidden md:block">
+                                            <span 
+                                                class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border shadow-sm"
+                                                :class="{
+                                                    'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800': game.status === 'completed',
+                                                    'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800': game.status === 'currently_playing',
+                                                    'bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600': game.status === 'uncategorized' || !game.status,
+                                                    'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800': game.status === 'played',
+                                                    'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800': game.status === 'not_played'
+                                                }"
+                                            >
+                                                {{ (game.status || 'Uncategorized').replace('_', ' ') }}
+                                            </span>
+                                        </div>
+
+                                        <div class="text-right min-w-[80px]">
+                                            <div class="font-black text-indigo-600 dark:text-indigo-400 text-lg leading-none mb-1">
+                                                {{ game.current_price ? formatCurrency(game.current_price) : '--' }}
+                                            </div>
+                                            
+                                            <!-- Market Prices Tooltip -->
+                                            <div v-if="game.market_prices && game.market_prices.length > 1" class="relative group/prices flex justify-end">
+                                                <span class="cursor-help flex items-center gap-1 text-[10px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded hover:bg-indigo-100 transition-colors border border-indigo-100 dark:border-indigo-800">
+                                                    <span>+{{ game.market_prices.length - 1 }}</span>
+                                                    <span class="hidden sm:inline">sources</span>
+                                                </span>
+                                                <div class="absolute bottom-full right-0 mb-2 hidden group-hover/prices:block min-w-[200px] bg-white dark:bg-gray-800 p-3 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 z-50">
+                                                     <div class="text-[10px] font-bold mb-2 text-gray-400 uppercase tracking-wider">Price Comparison</div>
+                                                     <div class="space-y-1.5">
+                                                         <div v-for="(mp, idx) in game.market_prices" :key="idx" class="flex justify-between items-center text-xs">
+                                                            <span class="text-gray-600 dark:text-gray-300 truncate pr-2" :title="mp.source">{{ mp.source }}</span>
+                                                            <span class="font-bold text-gray-900 dark:text-white">{{ formatCurrency(mp.price) }}</span>
+                                                        </div>
+                                                     </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
                                     <!-- Actions -->
-                                    <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button @click="refreshMetadata(game)" class="text-gray-400 hover:text-green-500" title="Refresh Metadata">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity pl-2 sm:pl-4 border-l border-gray-100 dark:border-gray-700">
+                                        <button @click="refreshMetadata(game)" class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-green-500 transition-all shadow-sm" title="Refresh Metadata">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3 3m0 0l-3-3m3 3V8" />
                                             </svg>
                                         </button>
-                                        <button @click="refreshPrice(game)" class="text-gray-400 hover:text-indigo-500" title="Update Price">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <button @click="refreshPrice(game)" class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-indigo-500 transition-all shadow-sm" title="Update Price">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                             </svg>
                                         </button>
-                                        <button @click="editGame(game)" class="text-gray-400 hover:text-blue-500" title="Edit">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <button @click="editGame(game)" class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-blue-500 transition-all shadow-sm" title="Edit">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                             </svg>
                                         </button>
-                                        <button @click="deleteGame(game)" class="text-gray-400 hover:text-red-500" title="Delete">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <button @click="deleteGame(game)" class="p-2 rounded-full text-gray-400 hover:text-white hover:bg-red-500 transition-all shadow-sm" title="Delete">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                             </svg>
                                         </button>
@@ -775,19 +868,23 @@ const importSteam = () => {
                                 </div>
                             </div>
                         </div>
-                        
-                        <div v-if="(games.data || games).length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
-                            No games found. Start adding some!
-                        </div>
-                    </div>
 
-                    <!-- Pagination -->
-                    <div v-if="games.links && games.links.length > 3" class="mt-6 flex justify-center">
-                        <div class="flex flex-wrap gap-1">
-                            <template v-for="(link, k) in games.links" :key="k">
-                                <div v-if="link.url === null" class="mr-1 mb-1 px-4 py-3 text-sm leading-4 text-gray-400 border rounded" v-html="link.label" />
-                                <Link v-else class="mr-1 mb-1 px-4 py-3 text-sm leading-4 border rounded hover:bg-white focus:border-indigo-500 focus:text-indigo-500" :class="{ 'bg-indigo-600 text-white': link.active, 'bg-white dark:bg-gray-800 dark:text-gray-300': !link.active }" :href="link.url" v-html="link.label" />
-                            </template>
+                        <!-- Pagination -->
+                        <div v-if="games.links && games.links.length > 3" class="mt-8 flex justify-center">
+                            <div class="flex flex-wrap gap-2 p-1 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                                <template v-for="(link, k) in games.links" :key="k">
+                                    <div v-if="link.url === null" class="px-4 py-2 text-sm text-gray-400 rounded-lg" v-html="link.label" />
+                                    <Link v-else 
+                                        class="px-4 py-2 text-sm rounded-lg transition-colors font-medium" 
+                                        :class="{ 
+                                            'bg-indigo-600 text-white shadow-md shadow-indigo-200 dark:shadow-indigo-900/50': link.active, 
+                                            'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700': !link.active 
+                                        }" 
+                                        :href="link.url" 
+                                        v-html="link.label" 
+                                    />
+                                </template>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -797,12 +894,12 @@ const importSteam = () => {
         <!-- Add/Edit Game Modal -->
         <Modal :show="addingGame" @close="cancelAddingGame">
             <div class="p-6">
-                <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+                <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">
                     {{ editingGame ? 'Edit Game' : 'Add New Game' }}
                 </h2>
 
                 <!-- Game Lookup Section -->
-                <div v-if="!isBulk && !editingGame" class="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-md">
+                <div v-if="!isBulk && !editingGame" class="mt-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-100 dark:border-gray-600">
                     <div class="flex gap-2">
                         <TextInput
                             v-model="lookupQuery"
@@ -820,16 +917,18 @@ const importSteam = () => {
                         {{ lookupError }}
                     </div>
 
-                            <div v-if="lookupResults.length > 0" class="mt-2 max-h-40 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800">
+                            <div v-if="lookupResults.length > 0" class="mt-2 max-h-60 overflow-y-auto border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 shadow-sm custom-scrollbar">
                                 <div 
                                     v-for="(game, index) in lookupResults" 
                                     :key="game.id || index"
                                     @click="selectLookupResult(game)"
-                                    class="p-2 hover:bg-indigo-50 dark:hover:bg-gray-700 cursor-pointer flex items-center gap-2 border-b dark:border-gray-700 last:border-0"
+                                    class="p-2.5 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 cursor-pointer flex items-center gap-3 border-b dark:border-gray-700 last:border-0 transition-colors duration-150"
                                 >
-                            <img v-if="game.background_image" :src="game.background_image" class="w-10 h-10 object-cover rounded" />
-                            <div class="text-sm text-gray-800 dark:text-gray-200">{{ game.name }}</div>
-                            <div class="text-xs text-gray-500 ml-auto">{{ game.released ? game.released.substring(0, 4) : '' }}</div>
+                            <img v-if="game.background_image" :src="game.background_image" class="w-12 h-12 object-cover rounded-md shadow-sm" />
+                            <div class="flex-1 min-w-0">
+                                <div class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{{ game.name }}</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400">{{ game.released ? game.released.substring(0, 4) : 'Unknown Year' }}</div>
+                            </div>
                         </div>
                     </div>
                 </div>

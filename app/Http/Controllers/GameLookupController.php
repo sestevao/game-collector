@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\RawgService;
 use App\Services\GamePriceManager;
+use App\Services\Ocr\OcrManager;
 use App\Models\Platform;
 use Illuminate\Http\Request;
 
@@ -11,11 +12,13 @@ class GameLookupController extends Controller
 {
     protected $rawgService;
     protected $gamePriceManager;
+    protected $ocrManager;
 
-    public function __construct(RawgService $rawgService, GamePriceManager $gamePriceManager)
+    public function __construct(RawgService $rawgService, GamePriceManager $gamePriceManager, OcrManager $ocrManager)
     {
         $this->rawgService = $rawgService;
         $this->gamePriceManager = $gamePriceManager;
+        $this->ocrManager = $ocrManager;
     }
 
     public function search(Request $request)
@@ -71,5 +74,30 @@ class GameLookupController extends Controller
             'title' => $title,
             'platform' => $platformName
         ]);
+    }
+
+    public function processOcr(Request $request)
+    {
+        $request->validate([
+            'image' => 'required|image|max:10240', // 10MB max
+        ]);
+
+        if ($request->hasFile('image')) {
+            $file = $request->file('image');
+            $path = $file->getPathname();
+
+            try {
+                // Use the OCR Manager to get the configured driver
+                $ocr = $this->ocrManager->driver();
+                $structuredLines = $ocr->extract($path);
+
+                return response()->json(['lines' => $structuredLines]);
+
+            } catch (\Exception $e) {
+                return response()->json(['error' => 'OCR failed: ' . $e->getMessage()], 500);
+            }
+        }
+
+        return response()->json(['error' => 'No image uploaded'], 400);
     }
 }

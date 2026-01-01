@@ -11,7 +11,7 @@ A modern, responsive web application for managing your video game collection. Tr
     -   **eBay Integration**: Automatically estimates market value for physical games using "Buy It Now" listings.
     -   **PlayStation Store** integration (via custom web scraping) for console game prices.
 -   **Steam Import**: Import your entire Steam library automatically.
--   **Image Scanning**: Add games by scanning their cover art (powered by Google Cloud Vision).
+-   **Image Scanning**: Add games by scanning their cover art (powered by Tesseract OCR).
 -   **Responsive Design**: Fully optimized for both desktop and mobile devices.
 -   **Statistics**: Visual breakdown of your collection's value, platform distribution, and completion status.
 -   **Reviews**: Read and write game reviews (Community features).
@@ -61,9 +61,13 @@ A modern, responsive web application for managing your video game collection. Tr
     EBAY_CLIENT_SECRET=your_ebay_client_secret
 
     # Other Services
-    GOOGLE_APPLICATION_CREDENTIALS=path/to/google-vision-credentials.json
     PRICECHARTING_KEY=your_pricecharting_key
     ```
+
+    > **Note for OCR**: You must have `tesseract` installed on your system.
+    > - macOS: `brew install tesseract`
+    > - Ubuntu: `sudo apt-get install tesseract-ocr`
+    > - Windows: Download the installer
 
 4.  **Generate App Key**
     ```bash
