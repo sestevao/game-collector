@@ -9,6 +9,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
+use App\Services\CexService;
+
 class SteamPriceTest extends TestCase
 {
     use RefreshDatabase;
@@ -27,7 +29,12 @@ class SteamPriceTest extends TestCase
         // Ensure PriceCharting is skipped
         config(['services.pricecharting.key' => null]);
 
-        // Mock Steam Search
+        // Mock CeX Service to avoid real Puppeteer calls
+        $this->mock(CexService::class, function ($mock) {
+            $mock->shouldReceive('getPrice')->andReturn(null);
+        });
+
+        // Mock Steam Search and others
         Http::fake([
             'store.steampowered.com/api/storesearch*' => Http::response([
                 'items' => [
@@ -42,7 +49,9 @@ class SteamPriceTest extends TestCase
                     ]
                 ]
             ], 200),
-            'store.steampowered.com/api/appdetails*' => Http::response([], 200), // Should not be called but just in case
+            'store.steampowered.com/api/appdetails*' => Http::response([], 200),
+            // Mock other services to ensure no stray requests interfere
+            '*' => Http::response([], 200),
         ]);
 
         $response = $this->actingAs($user)->post("/games/{$game->id}/refresh-price");

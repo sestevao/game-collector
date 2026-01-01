@@ -47,4 +47,15 @@ class Game extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    public function collections()
+    {
+        return $this->belongsToMany(Collection::class, 'collection_game')
+            ->withTimestamps();
+    }
 }

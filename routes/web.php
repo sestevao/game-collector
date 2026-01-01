@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\GameController;
+use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\GameLookupController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\LinkedAccountController;
@@ -42,13 +43,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/games/stores', [RankingController::class, 'stores'])->name('games.stores');
     Route::get('/games/collections', [RankingController::class, 'collections'])->name('games.collections');
 
-    Route::resource('games', GameController::class);
-    
     // Game Lookup
     Route::get('/games/lookup', [GameLookupController::class, 'search'])->name('games.lookup');
+    Route::get('/games/lookup-prices', [GameLookupController::class, 'searchPrices'])->name('games.lookup-prices');
+    Route::get('/games/lookup/{id}', [GameLookupController::class, 'details'])->name('games.lookup-details');
+
+    Route::resource('games', GameController::class);
     
     // Reviews
     Route::get('/reviews', [ReviewController::class, 'index'])->name('reviews.index');
+    Route::post('/reviews', [ReviewController::class, 'store'])->name('reviews.store');
+
+    // Collections
+    Route::post('/collections', [CollectionController::class, 'store'])->name('collections.store');
+    Route::put('/collections/{collection}', [CollectionController::class, 'update'])->name('collections.update');
+    Route::delete('/collections/{collection}', [CollectionController::class, 'destroy'])->name('collections.destroy');
+    Route::post('/collections/{collection}/games', [CollectionController::class, 'addGame'])->name('collections.add-game');
+    Route::delete('/collections/{collection}/games/{game}', [CollectionController::class, 'removeGame'])->name('collections.remove-game');
 
     // Public Profile
     Route::get('/user/{id}', [ProfileController::class, 'show'])->name('user.show');

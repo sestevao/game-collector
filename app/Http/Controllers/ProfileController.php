@@ -16,12 +16,61 @@ class ProfileController extends Controller
     /**
      * Display the user's public profile.
      */
-    public function show($id): Response
+    public function show(Request $request, $id): Response
     {
-        $user = \App\Models\User::findOrFail($id);
+        $user = \App\Models\User::withCount(['followers', 'following', 'games', 'reviews'])->findOrFail($id);
+        
+        // Check if we are viewing our own profile
+        $isOwnProfile = $request->user() && $request->user()->id === $user->id;
+
+        // Fetch data based on tab or pre-fetch if dataset is small
+        // For now, let's pre-fetch reasonable amounts or all if small app
+        
+        $library = $user->games()
+            ->where('purchased', true)
+            ->with('platform')
+            ->orderBy('title')
+            ->get();
+
+        $wishlist = $user->games()
+            ->where('purchased', false)
+            ->with('platform')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $reviews = $user->reviews()
+            ->with('game')
+            ->latest()
+            ->get();
+
+        $collections = $user->collections()
+            ->when(!$isOwnProfile, function ($query) {
+                return $query->where('is_public', true);
+            })
+            ->withCount('games')
+            ->latest()
+            ->get();
+            
+        $followers = $user->followers()->get();
+        $following = $user->following()->get();
 
         return Inertia::render('Profile/Show', [
             'profileUser' => $user,
+            'isOwnProfile' => $isOwnProfile,
+            'stats' => [
+                'library_count' => $library->count(),
+                'wishlist_count' => $wishlist->count(),
+                'reviews_count' => $reviews->count(),
+                'collections_count' => $collections->count(),
+                'followers_count' => $user->followers_count,
+                'following_count' => $user->following_count,
+            ],
+            'library' => $library,
+            'wishlist' => $wishlist,
+            'reviews' => $reviews,
+            'collections' => $collections,
+            'followers' => $followers,
+            'following' => $following,
         ]);
     }
 

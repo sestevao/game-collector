@@ -31,11 +31,42 @@ class EbayService
             return null;
         }
 
-        $query = $title;
-        if ($platform) {
-            $query .= " " . $platform;
+        // Try optimized query first (Short codes)
+        $shortPlatform = $this->getShortPlatform($platform);
+        $query = $title . ($shortPlatform ? " " . $shortPlatform : ($platform ? " " . $platform : ""));
+
+        $price = $this->performSearch($token, $query);
+
+        // Fallback: If no price found and we used a short code, try original platform name
+        if ($price === null && $shortPlatform && $platform !== $shortPlatform) {
+            $price = $this->performSearch($token, $title . " " . $platform);
         }
 
+        return $price;
+    }
+
+    protected function getShortPlatform($platform)
+    {
+        if (!$platform) return null;
+        
+        $map = [
+            'PlayStation 5' => 'PS5',
+            'PlayStation 4' => 'PS4',
+            'PlayStation 3' => 'PS3',
+            'PlayStation 2' => 'PS2',
+            'PlayStation' => 'PS1',
+            'Nintendo Switch' => 'Switch',
+            'Xbox Series X' => 'Xbox Series X',
+            'Xbox Series S' => 'Xbox Series S',
+            'Xbox One' => 'Xbox One',
+            'Xbox 360' => 'Xbox 360',
+        ];
+
+        return $map[$platform] ?? null;
+    }
+
+    protected function performSearch($token, $query)
+    {
         try {
             // We target EBAY_GB for this user since they seem to use GBP
             $response = Http::withHeaders([
@@ -76,6 +107,7 @@ class EbayService
             }
         } catch (\Exception $e) {
             // Log error
+            \Illuminate\Support\Facades\Log::error("eBay search failed for '{$query}': " . $e->getMessage());
         }
 
         return null;

@@ -1,23 +1,43 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head } from '@inertiajs/vue3';
+import { Head, useForm } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
+import Modal from '@/Components/Modal.vue';
+import InputError from '@/Components/InputError.vue';
+import InputLabel from '@/Components/InputLabel.vue';
+import PrimaryButton from '@/Components/PrimaryButton.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
+import TextInput from '@/Components/TextInput.vue';
+
+const props = defineProps({
+    reviews: Array,
+    userGames: Array,
+});
 
 const activeTab = ref('popular');
+const showReviewModal = ref(false);
 
-const mockReviews = [
-    { id: 1, user: 'GamerOne', game: 'Elden Ring', rating: 5, content: 'Absolute masterpiece. The open world is breathtaking.', date: '2 days ago', category: 'popular' },
-    { id: 2, user: 'RetroFan', game: 'Stardew Valley', rating: 5, content: 'Relaxing and addictive. Best farming sim ever.', date: '1 week ago', category: 'popular' },
-    { id: 3, user: 'CriticX', game: 'Cyberpunk 2077', rating: 4, content: 'Great story, but still some bugs. Visuals are stunning though.', date: '3 hours ago', category: 'new' },
-    { id: 4, user: 'SpeedRunner', game: 'Hades', rating: 5, content: 'Just one more run... The gameplay loop is perfect.', date: '5 hours ago', category: 'new' },
-    { id: 5, user: 'Newbie', game: 'Baldur\'s Gate 3', rating: 5, content: 'I have no idea what I am doing but I love it.', date: '1 day ago', category: 'popular' },
-];
+const form = useForm({
+    game_id: '',
+    rating: 5,
+    content: '',
+    is_public: true,
+});
+
+const submitReview = () => {
+    form.post(route('reviews.store'), {
+        onSuccess: () => {
+            showReviewModal.value = false;
+            form.reset();
+        },
+    });
+};
 
 const filteredReviews = computed(() => {
     if (activeTab.value === 'popular') {
-        return mockReviews.filter(r => r.category === 'popular');
+        return props.reviews.filter(r => r.category === 'popular');
     }
-    return mockReviews.filter(r => r.category === 'new');
+    return props.reviews.filter(r => r.category === 'new');
 });
 </script>
 
@@ -27,7 +47,12 @@ const filteredReviews = computed(() => {
     <AuthenticatedLayout>
         <div class="py-8">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <h1 class="text-4xl font-black text-gray-900 dark:text-white mb-8">Reviews</h1>
+                <div class="flex justify-between items-center mb-8">
+                    <h1 class="text-4xl font-black text-gray-900 dark:text-white">Reviews</h1>
+                    <PrimaryButton @click="showReviewModal = true">
+                        Write a Review
+                    </PrimaryButton>
+                </div>
 
                 <!-- Tabs -->
                 <div class="border-b border-gray-200 dark:border-gray-700 mb-6">
@@ -49,7 +74,10 @@ const filteredReviews = computed(() => {
 
                 <!-- Content -->
                 <div class="space-y-6">
-                    <div v-for="review in filteredReviews" :key="review.id" class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm hover:shadow-md transition">
+                    <div v-if="filteredReviews.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
+                        No reviews in this category yet. Be the first to write one!
+                    </div>
+                    <div v-else v-for="review in filteredReviews" :key="review.id" class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm hover:shadow-md transition">
                         <div class="flex flex-wrap justify-between items-start mb-4 gap-4">
                             <div>
                                 <h3 class="font-bold text-xl text-gray-900 dark:text-white">{{ review.game }}</h3>
@@ -63,11 +91,68 @@ const filteredReviews = computed(() => {
                                 <span class="font-bold text-green-800 dark:text-green-300">{{ review.rating }}/5</span>
                             </div>
                         </div>
-                        <p class="text-gray-700 dark:text-gray-300 leading-relaxed">{{ review.content }}</p>
+                        <p class="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-line">{{ review.content }}</p>
                     </div>
                 </div>
 
             </div>
         </div>
+
+        <!-- Review Modal -->
+        <Modal :show="showReviewModal" @close="showReviewModal = false">
+            <div class="p-6">
+                <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+                    Write a Review
+                </h2>
+
+                <form @submit.prevent="submitReview" class="mt-6 space-y-6">
+                    <div>
+                        <InputLabel for="game_id" value="Select Game" />
+                        <select
+                            id="game_id"
+                            v-model="form.game_id"
+                            class="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm"
+                            required
+                        >
+                            <option value="" disabled>Select a game from your collection</option>
+                            <option v-for="game in userGames" :key="game.id" :value="game.id">
+                                {{ game.title }}
+                            </option>
+                        </select>
+                        <InputError :message="form.errors.game_id" class="mt-2" />
+                    </div>
+
+                    <div>
+                        <InputLabel for="rating" value="Rating" />
+                        <div class="flex space-x-2 mt-1">
+                            <label v-for="n in 5" :key="n" class="cursor-pointer group">
+                                <input type="radio" v-model="form.rating" :value="n" class="sr-only" />
+                                <span class="text-3xl transition-colors duration-150" :class="n <= form.rating ? 'text-yellow-400' : 'text-gray-300 group-hover:text-yellow-200'">★</span>
+                            </label>
+                        </div>
+                        <InputError :message="form.errors.rating" class="mt-2" />
+                    </div>
+
+                    <div>
+                        <InputLabel for="content" value="Review" />
+                        <textarea
+                            id="content"
+                            v-model="form.content"
+                            rows="4"
+                            class="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm"
+                            placeholder="Share your thoughts about the game..."
+                        ></textarea>
+                        <InputError :message="form.errors.content" class="mt-2" />
+                    </div>
+
+                    <div class="mt-6 flex justify-end">
+                        <SecondaryButton @click="showReviewModal = false"> Cancel </SecondaryButton>
+                        <PrimaryButton class="ml-3" :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
+                            Post Review
+                        </PrimaryButton>
+                    </div>
+                </form>
+            </div>
+        </Modal>
     </AuthenticatedLayout>
 </template>
