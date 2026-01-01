@@ -12,6 +12,11 @@ node -v
 npm -v
 
 # Caching configuration
+echo "Clearing caches..."
+php artisan config:clear
+php artisan route:clear
+php artisan view:clear
+
 echo "Caching configuration..."
 php artisan config:cache
 php artisan route:cache
